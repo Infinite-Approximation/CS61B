@@ -5,7 +5,7 @@ import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Jack Jin
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -109,18 +109,65 @@ public class Model extends Observable {
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
-
-        // TODO: Modify this.board (and perhaps this.score) to account
+        board.setViewingPerspective(side);
+        for (int col = 0; col < board.size(); col++) {
+            if (tiltEachColumn(col)) {
+                changed = true;
+            }
+        }
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
         checkGameOver();
         if (changed) {
             setChanged();
         }
+        board.setViewingPerspective(Side.NORTH);
         return changed;
     }
 
+    /**
+     * 判断第col行是否有需要移动的方块
+     *
+     * @param col 第col列
+     * @return 如果有需要移动的方块那么就返回true
+     */
+    public boolean tiltEachColumn(int col) {
+        // merged用于判断该行是否已经被合并过了，如果是，那么就不能再合并
+        boolean[] merged = new boolean[board.size()];
+        boolean changed = false;
+        for (int row = board.size() - 2; row >= 0; row--) {
+            Tile curTile = board.tile(col, row);
+            if (curTile == null) {
+                continue;
+            }
+            int targetRow = row + 1; // (col, row) -> (col, targetRow)
+            // 开始寻找满足条件的row
+            while (targetRow < board.size()) {
+                Tile targetTile =  board.tile(col, targetRow);
+                if (targetTile == null) {
+                    changed = true;
+                    if (targetRow == board.size() - 1) {
+                        break;
+                    }
+                    targetRow++;
+                } else if (targetTile.value() == curTile.value() && !merged[targetRow]) {
+                    changed = true;
+                    break;
+                } else {
+                    targetRow--;
+                    if (targetRow != row) {
+                        changed = true;
+                    }
+                    break;
+                }
+            }
+            if (board.move(col, targetRow, curTile)) {
+                merged[targetRow] = true;
+                score += 2 * curTile.value();
+            }
+        }
+        return changed;
+    }
     /** Checks if the game is over and sets the gameOver variable
      *  appropriately.
      */
@@ -137,7 +184,13 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        for (int row = 0; row < b.size(); row++) {
+            for (int col = 0; col < b.size(); col++) {
+                if (b.tile(row, col) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -147,7 +200,13 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        for (int row = 0; row < b.size(); row++) {
+            for (int col = 0; col < b.size(); col++) {
+                if (b.tile(row, col) != null && b.tile(row, col).value() == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -158,8 +217,36 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
+        if (emptySpaceExists(b) == true) {
+            return true;
+        }
+        for (int row = 0; row < b.size(); row++) {
+            for (int col = 0; col < b.size(); col++) {
+                if (hasAajacentTitles(row, col, b) == true) {
+                    return true;
+                }
+            }
+        }
         return false;
+    }
+
+    /***
+     * Check if the tile in (row, col) has the same value around.
+     * @param row
+     * @param col
+     * @return Return true if the tile in (row, col) has the same value around.
+     */
+    public static boolean hasAajacentTitles(int row, int col, Board b) {
+        /** You have to judge whether (row, col) of Board is null before use the method "value()"*/
+        if (b.tile(row, col) == null) {
+            return false;
+        }
+        int curValue = b.tile(row, col).value();
+        boolean hasDownTitles = row > 0 && b.tile(row - 1, col) != null && b.tile(row - 1, col).value() == curValue;
+        boolean hasUpTitles = row < b.size() -1 && b.tile(row + 1, col) != null && b.tile(row + 1, col).value() == curValue;
+        boolean hasLeftTitles = col > 0 && b.tile(row, col - 1) != null && b.tile(row, col - 1).value() == curValue;
+        boolean hasRightTitles = col < b.size() - 1 && b.tile(row, col + 1) != null && b.tile(row, col + 1).value() == curValue;
+        return hasDownTitles || hasUpTitles || hasLeftTitles || hasRightTitles;
     }
 
 
