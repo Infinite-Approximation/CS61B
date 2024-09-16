@@ -1,5 +1,8 @@
 package deque;
 import org.junit.Test;
+
+import java.util.Iterator;
+
 import static org.junit.Assert.*;
 public class ArrayDequeTest {
     @Test
@@ -31,12 +34,9 @@ public class ArrayDequeTest {
     @Test
     public void iteratorTest() {
         ArrayDeque<Integer> deque = new ArrayDeque<>();
-        deque.addFirst(1);
-        deque.addFirst(2);
-        deque.addFirst(3);
-        deque.addFirst(4);
-        for (Integer i : deque) {
-            System.out.println(i);
+        Iterator<Integer> it = deque.iterator();
+        while (it.hasNext()) {
+            System.out.println(it.next());
         }
     }
 

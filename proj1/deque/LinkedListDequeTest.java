@@ -183,4 +183,16 @@ public class LinkedListDequeTest {
         Integer a = lld1.removeLast();
         assertEquals((Integer) 1, a);
     }
+
+    @Test
+    public void iteratorTest1() {
+        LinkedListDeque<Integer> deque = new LinkedListDeque<>();
+        for (int i = 0; i < 10; i++) {
+            deque.addFirst(i);
+        }
+        Iterator<Integer> it = deque.iterator();
+        while (it.hasNext()) {
+            System.out.println(it.next());
+        }
+    }
 }

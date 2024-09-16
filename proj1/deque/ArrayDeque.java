@@ -6,7 +6,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
     private int size = 0;
     private int nextFirst = 4;
     private int nextLast = 5;
-
+    private int FACTOR = 2;
     public ArrayDeque() {
         items = (T[]) new Object[8];
     }
@@ -25,7 +25,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
 
     public void addLast(T item) {
         if (size == items.length) {
-            resize(size + 1);
+            resize(size * FACTOR);
         }
         items[nextLast] = item;
         nextLast = getRealIndex(nextLast, +1);
@@ -101,18 +101,17 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
 
     private class ArrayDequeIterator implements Iterator<T> {
         private int start = getRealIndex(nextFirst, +1);
-        /** 第一次 start = getRealIndex(nextFirst, +1)是可以的，第二次说明遍历完成了 */
-        private boolean checkedStart = false;
+        private int sizeOfArray = size;
         @Override
         public boolean hasNext() {
-            return !checkedStart || start != getRealIndex(nextFirst, +1);
+            return (sizeOfArray > 0);
         }
 
         @Override
         public T next() {
-            checkedStart = true;
             T data = items[start];
             start = getRealIndex(start, +1);
+            sizeOfArray--;
             return data;
         }
     }
@@ -130,7 +129,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
             return false;
         }
         for (int i = 0; i < this.size(); i++) {
-            if (this.get(i).equals(that.get(i))) {
+            if (!this.get(i).equals(that.get(i))) {
                 return false;
             }
         }
