@@ -106,7 +106,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         if (this == o) {
             return true;
         }
-        if (o == null) {
+        if (o == null || !(o instanceof Deque)) {
             return false;
         }
         Deque<?> that = (Deque<?>) o;
