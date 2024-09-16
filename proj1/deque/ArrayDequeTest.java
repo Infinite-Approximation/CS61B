@@ -42,4 +42,29 @@ public class ArrayDequeTest {
         System.out.println(deque.getItemsLength());
         System.out.println(deque.size());
     }
+
+    @Test
+    public void iteratorTest() {
+        ArrayDeque<Integer> deque = new ArrayDeque<>();
+        deque.addFirst(1);
+        deque.addFirst(2);
+        deque.addFirst(3);
+        deque.addFirst(4);
+        for (Integer i : deque) {
+            System.out.println(i);
+        }
+    }
+
+    @Test
+    public void equalsTest() {
+        ArrayDeque<Integer> deque = new ArrayDeque<>();
+        ArrayDeque<Integer> deque2 = new ArrayDeque<>();
+        deque.addFirst(1);
+        deque.addFirst(2);
+        deque.addFirst(3);
+        deque2.addFirst(1);
+        deque2.addFirst(2);
+        deque2.addFirst(3);
+        assertEquals("Not equal", deque, deque2);
+    }
 }

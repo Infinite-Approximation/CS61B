@@ -1,16 +1,21 @@
 package deque;
 
-public class LinkedListDeque<T> {
+import java.util.Iterator;
+
+public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
     public class Node {
         public Node prev;
         public T data;
         public Node next;
+
         public Node(T data) {
             this.data = data;
         }
     }
+
     private int size;
     private Node sentinel;
+
     public LinkedListDeque() {
         sentinel = new Node(null);
         sentinel.prev = sentinel;
@@ -20,6 +25,7 @@ public class LinkedListDeque<T> {
     public Node getSentinel() {
         return sentinel;
     }
+
     public void addFirst(T item) {
         Node node = new Node(item);
         node.next = sentinel.next;
@@ -38,10 +44,6 @@ public class LinkedListDeque<T> {
         node.next = sentinel;
         sentinel.prev = node;
         size++;
-    }
-
-    public boolean isEmpty() {
-        return size == 0;
     }
 
     public int size() {
@@ -103,20 +105,44 @@ public class LinkedListDeque<T> {
     }
 
     public boolean equals(Object o) {
-        if (o instanceof LinkedListDeque) {
-            Node p1 = sentinel.next;
-            Node p2 = ((LinkedListDeque) o).getSentinel().next;
-            while (p1 != sentinel) {
-                if (!p1.data.equals(p2.data)) {
-                    return false;
-                }
-                p1 = p1.next;
-                p2 = p2.next;
-            }
+        if (this == o) {
             return true;
         }
-        return false;
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (this.size() != ((LinkedListDeque) o).size()) {
+            return false;
+        }
+        Node p1 = sentinel.next;
+        Node p2 = ((LinkedListDeque) o).getSentinel().next;
+        while (p1 != sentinel) {
+            if (!p1.data.equals(p2.data)) {
+                return false;
+            }
+            p1 = p1.next;
+            p2 = p2.next;
+        }
+        return true;
     }
 
-    // TODO: public Iterator<T> iterator()
+    public Iterator<T> iterator() {
+        return new LinkedListDequeIterator();
+    }
+
+    private class LinkedListDequeIterator implements Iterator<T> {
+        Node p = sentinel.next;
+
+        @Override
+        public boolean hasNext() {
+            return p != sentinel;
+        }
+
+        @Override
+        public T next() {
+            T data = p.data;
+            p = p.next;
+            return data;
+        }
+    }
 }

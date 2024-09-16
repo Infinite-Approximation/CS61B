@@ -2,6 +2,9 @@ package deque;
 
 import jh61b.junit.In;
 import org.junit.Test;
+
+import java.util.Iterator;
+
 import static org.junit.Assert.*;
 
 
@@ -134,5 +137,39 @@ public class LinkedListDequeTest {
         lld2.addLast(2);
         lld2.addLast(3);
         assertTrue("Not equal", lld1.equals(lld2));
+    }
+
+    @Test
+    public void equalsTest2() {
+        LinkedListDeque<Integer> lld1 = new LinkedListDeque<>();
+        LinkedListDeque<Integer> lld2 = null;
+        lld1.addLast(1);
+        lld1.addLast(2);
+        lld1.addLast(3);
+        assertFalse("Not equal", lld1.equals(lld2));
+    }
+
+    @Test
+    public void equalsTest3() {
+        LinkedListDeque<String> lld1 = new LinkedListDeque<>();
+        LinkedListDeque<String> lld2 = new LinkedListDeque<>();
+        lld1.addLast("1");
+        lld1.addLast("2");
+        lld1.addLast("3");
+        lld2.addLast("1");
+        lld2.addLast("2");
+        lld2.addLast("3");
+        assertTrue("Not equal", lld1.equals(lld2));
+    }
+
+    @Test
+    public void iteratorTest() {
+        LinkedListDeque<Integer> lld1 = new LinkedListDeque<>();
+        lld1.addLast(1);
+        lld1.addLast(2);
+        lld1.addLast(3);
+        for (Integer integer : lld1) {
+            System.out.println(integer);
+        }
     }
 }
