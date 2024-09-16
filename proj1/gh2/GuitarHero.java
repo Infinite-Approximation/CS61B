@@ -4,7 +4,7 @@ import edu.princeton.cs.algs4.StdAudio;
 import edu.princeton.cs.algs4.StdDraw;
 
 public class GuitarHero {
-    public GuitarString[] guitarStrings = new GuitarString[37];
+    private GuitarString[] guitarStrings = new GuitarString[37];
     private String keyboard = "q2we4r5ty7u8i9op-[=zxdcfvgbnjmk,.;/' ";
     public GuitarHero() {
         for (int i = 0; i < 37; i++) {

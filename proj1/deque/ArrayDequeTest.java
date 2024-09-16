@@ -29,21 +29,6 @@ public class ArrayDequeTest {
     }
 
     @Test
-    public void removeFirstTest() {
-        ArrayDeque<Integer> deque = new ArrayDeque<>();
-        for (int i = 0; i < 100; i++) {
-            deque.addFirst(i);
-        }
-        System.out.println(deque.getItemsLength());
-        System.out.println(deque.size());
-        for (int i = 0; i < 77; i++) {
-            deque.removeFirst();
-        }
-        System.out.println(deque.getItemsLength());
-        System.out.println(deque.size());
-    }
-
-    @Test
     public void iteratorTest() {
         ArrayDeque<Integer> deque = new ArrayDeque<>();
         deque.addFirst(1);

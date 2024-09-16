@@ -1,7 +1,4 @@
 package deque;
-
-import org.hamcrest.Factory;
-
 import java.util.Iterator;
 
 public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
@@ -14,9 +11,6 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
         items = (T[]) new Object[8];
     }
 
-    public int getItemsLength() {
-        return items.length;
-    }
     private int getRealIndex(int index, int offset) {
         return (index + offset + items.length) % items.length;
     }
@@ -136,7 +130,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
             return false;
         }
         for (int i = 0; i < this.size(); i++) {
-            if (this.get(i) != that.get(i)) {
+            if (this.get(i).equals(that.get(i))) {
                 return false;
             }
         }

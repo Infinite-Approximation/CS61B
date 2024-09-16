@@ -3,10 +3,10 @@ package deque;
 import java.util.Iterator;
 
 public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
-    public class Node {
-        public Node prev;
-        public T data;
-        public Node next;
+    private class Node {
+        private Node prev;
+        private T data;
+        private Node next;
 
         public Node(T data) {
             this.data = data;
@@ -22,18 +22,16 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         sentinel.next = sentinel;
     }
 
-    public Node getSentinel() {
-        return sentinel;
-    }
-
     public void addFirst(T item) {
+        if (size == 0) {
+            addLast(item);
+            return;
+        }
         Node node = new Node(item);
         node.next = sentinel.next;
+        sentinel.next.prev = node;
         sentinel.next = node;
         node.prev = sentinel;
-        if (size == 0) {
-            sentinel.prev = node;
-        }
         size++;
     }
 
@@ -78,8 +76,8 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
             return null;
         }
         Node removeNode = sentinel.prev;
-        sentinel.prev.prev.next = sentinel;
-        sentinel.prev = sentinel.prev.prev;
+        removeNode.prev.next = sentinel;
+        sentinel.prev = removeNode.prev;
         size--;
         return removeNode.data;
     }
@@ -97,7 +95,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         return getRecursiveNode(sentinel.next, index);
     }
 
-    public T getRecursiveNode(Node p, int index) {
+    private T getRecursiveNode(Node p, int index) {
         if (index == 0) {
             return p.data;
         }
@@ -111,17 +109,14 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (this.size() != ((LinkedListDeque) o).size()) {
+        LinkedListDeque that = (LinkedListDeque) o;
+        if (this.size() != that.size()) {
             return false;
         }
-        Node p1 = sentinel.next;
-        Node p2 = ((LinkedListDeque) o).getSentinel().next;
-        while (p1 != sentinel) {
-            if (!p1.data.equals(p2.data)) {
+        for (int i = 0; i < size(); i++) {
+            if (!this.get(i).equals(that.get(i))) {
                 return false;
             }
-            p1 = p1.next;
-            p2 = p2.next;
         }
         return true;
     }
