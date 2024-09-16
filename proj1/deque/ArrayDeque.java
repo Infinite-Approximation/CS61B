@@ -16,7 +16,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
     }
     public void addFirst(T item) {
         if (size == items.length) {
-            resize(size + 1);
+            resize(size * FACTOR);
         }
         items[nextFirst] = item;
         nextFirst = getRealIndex(nextFirst, -1);
@@ -121,10 +121,10 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (o == null) {
             return false;
         }
-        ArrayDeque that = (ArrayDeque) o;
+        Deque<?> that = (Deque<?>) o;
         if (this.size() != that.size()) {
             return false;
         }
