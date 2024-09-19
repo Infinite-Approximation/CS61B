@@ -18,6 +18,13 @@ public class TestBSTMap {
 	    }
     }
 
+    @Test
+    public void simpleTest() {
+        BSTMap<String, Integer> b = new BSTMap<String, Integer>();
+        b.put("a", 1);
+        assertEquals((Integer) 1, b.get("a"));
+    }
+
     //assumes put/size/containsKey/get work
     @Test
     public void sanityClearTest() {
