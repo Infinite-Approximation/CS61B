@@ -185,15 +185,14 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
             return null;
         }
         int index = Math.floorMod(key.hashCode(), buckets.length);
-        V val = null;
         Collection<Node> collection = buckets[index];
         for (Node node : collection) {
             if (node.key.equals(key)) {
-                val = node.value;
-                collection.remove(node.key);
+                collection.remove(node);
+                return node.value;
             }
         }
-        return val;
+        return null;
     }
 
     @Override
@@ -205,7 +204,7 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
         Collection<Node> collection = buckets[index];
         for (Node node : collection) {
             if (node.key.equals(key) && node.value.equals(value)) {
-                collection.remove(node.key);
+                collection.remove(node);
                 return value;
             }
         }
