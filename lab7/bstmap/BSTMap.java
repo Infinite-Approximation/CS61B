@@ -1,11 +1,13 @@
 package bstmap;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
 public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
     private Node root;
     private int size = 0;
+    private Set<K> set = new HashSet<>();
     private class Node {
         private K key;
         private V value;
@@ -29,6 +31,12 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         return getNode(root, key) != null;
     }
 
+    /**
+     * 这个函数是get(K key)的加强版，为了区分返回值为null是因为 key对应的value是null，还是说因为没有找到返回null
+     * @param node
+     * @param key
+     * @return 如果为null，说明没有key对应的Node，否则就返回key对应的Node
+     */
     private Node getNode(Node node, K key) {
         if (node == null) {
             return null;
@@ -111,12 +119,72 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
 
     @Override
     public Set<K> keySet() {
-        throw new UnsupportedOperationException();
+        generateKeySet(root);
+        return set;
+    }
+
+    private void generateKeySet(Node cur) {
+        if (cur == null) {
+            return;
+        }
+        generateKeySet(cur.left);
+        set.add(cur.key);
+        generateKeySet(cur.right);
     }
 
     @Override
     public V remove(K key) {
-        throw new UnsupportedOperationException();
+        Node node = getNode(root, key);
+        if (node == null) {
+            return null;
+        }
+        size--;
+        root = remove(root, key);
+        return node.value;
+    }
+
+    private Node remove(Node node, K key) {
+        if (node == null) {
+            return null;
+        }
+        int cmp = key.compareTo(node.key);
+        if (cmp > 0) {
+            node.right = remove(node.right, key);
+        } else if (cmp < 0) {
+            node.left = remove(node.left, key);
+        } else {
+            // 前两个if处理了只有一个子节点和没有子节点的情况。
+            if (node.left == null) {
+                return node.right;
+            }
+            if (node.right == null) {
+                return node.left;
+            }
+            // 开始处理有两个子节点的情况，这里采用取右边的最小值来替代key对应的节点。
+            Node tempNode = node;
+            node = min(node.right);
+            node.right = deleteMin(tempNode.right);
+            node.left = tempNode.left;
+        }
+        return node;
+    }
+
+    private Node deleteMin(Node node) {
+        if (node.left == null) {
+            return node.right;
+        }
+        node.left = deleteMin(node.left);
+        return node;
+    }
+    private K min() {
+        return min(root).key;
+    }
+
+    private Node min(Node node) {
+        if (node.left == null) {
+            return node;
+        }
+        return min(node.left);
     }
 
     @Override
@@ -126,6 +194,6 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
 
     @Override
     public Iterator<K> iterator() {
-        throw new UnsupportedOperationException();
+        return keySet().iterator();
     }
 }
