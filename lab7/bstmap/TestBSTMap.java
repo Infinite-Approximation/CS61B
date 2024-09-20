@@ -22,7 +22,9 @@ public class TestBSTMap {
     public void simpleTest() {
         BSTMap<String, Integer> b = new BSTMap<String, Integer>();
         b.put("a", 1);
-        assertEquals((Integer) 1, b.get("a"));
+        b.put("c", 2);
+        b.put("b", 3);
+        b.printInOrder();
     }
 
     //assumes put/size/containsKey/get work

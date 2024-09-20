@@ -9,7 +9,7 @@ import java.util.*;
  *  Assumes null keys will never be inserted, and does not resize down upon remove().
  *  @author YOUR NAME HERE
  */
-public class MyHashMap<K, V> implements Map61B<K, V>, Iterable<K> {
+public class MyHashMap<K, V> implements Map61B<K, V> {
 
     /**
      * Protected helper class to store key/value pairs
@@ -202,12 +202,11 @@ public class MyHashMap<K, V> implements Map61B<K, V>, Iterable<K> {
             return null;
         }
         int index = Math.floorMod(key.hashCode(), buckets.length);
-        V val = null;
         Collection<Node> collection = buckets[index];
         for (Node node : collection) {
             if (node.key.equals(key) && node.value.equals(value)) {
                 collection.remove(node.key);
-                return val;
+                return value;
             }
         }
         return null;
