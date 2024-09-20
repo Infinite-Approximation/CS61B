@@ -1,6 +1,6 @@
 package hashmap;
 
-import java.util.Collection;
+import java.util.*;
 
 /**
  *  A hash table-backed Map implementation. Provides amortized constant time
@@ -9,7 +9,7 @@ import java.util.Collection;
  *  Assumes null keys will never be inserted, and does not resize down upon remove().
  *  @author YOUR NAME HERE
  */
-public class MyHashMap<K, V> implements Map61B<K, V> {
+public class MyHashMap<K, V> implements Map61B<K, V>, Iterable<K> {
 
     /**
      * Protected helper class to store key/value pairs
@@ -28,11 +28,22 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     /* Instance Variables */
     private Collection<Node>[] buckets;
     // You should probably define some more!
-
+    private double loadFactor = 0.75;
+    private static int defaultSize = 16;
+    private int size;
+    private Set<K> set;
     /** Constructors */
-    public MyHashMap() { }
+    public MyHashMap() {
+        this(defaultSize);
+    }
 
-    public MyHashMap(int initialSize) { }
+    public MyHashMap(int initialSize) {
+        buckets = createTable(initialSize);
+        for (int i = 0; i < buckets.length; i++) {
+            buckets[i] = createBucket();
+        }
+        set = new HashSet<>();
+    }
 
     /**
      * MyHashMap constructor that creates a backing array of initialSize.
@@ -41,13 +52,16 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
      * @param initialSize initial size of backing array
      * @param maxLoad maximum load factor
      */
-    public MyHashMap(int initialSize, double maxLoad) { }
+    public MyHashMap(int initialSize, double maxLoad) {
+        this(initialSize);
+        loadFactor = maxLoad;
+    }
 
     /**
      * Returns a new node to be placed in a hash table bucket
      */
     private Node createNode(K key, V value) {
-        return null;
+        return new Node(key, value);
     }
 
     /**
@@ -69,7 +83,7 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
      * OWN BUCKET DATA STRUCTURES WITH THE NEW OPERATOR!
      */
     protected Collection<Node> createBucket() {
-        return null;
+        return new ArrayList<>(); // 默认是这个
     }
 
     /**
@@ -82,10 +96,125 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
      * @param tableSize the size of the table to create
      */
     private Collection<Node>[] createTable(int tableSize) {
+        return new Collection[tableSize];
+    }
+
+
+    @Override
+    public void clear() {
+        size = 0;
+        for (int i = 0; i < buckets.length; i++) {
+            buckets[i].clear();
+        }
+        set.clear();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return get(key) != null;
+    }
+
+    @Override
+    public V get(K key) {
+        int index = Math.floorMod(key.hashCode(), buckets.length);
+        Collection<Node> collection = buckets[index];
+        for (Node node : collection) {
+            if (node.key.equals(key)) {
+                return node.value;
+            }
+        }
         return null;
     }
 
-    // TODO: Implement the methods of the Map61B Interface below
-    // Your code won't compile until you do so!
+    @Override
+    public int size() {
+        return size;
+    }
 
+    @Override
+    public void put(K key, V value) {
+        if ((size + 1) * 1.0 / buckets.length > loadFactor) {
+            resize(buckets.length * 2);
+        }
+        int index = Math.floorMod(key.hashCode(), buckets.length);
+        if (get(key) == null) {
+            size++;
+        }
+        Collection<Node> collection = buckets[index];
+        for (Node node : collection) {
+            if (node.key.equals(key)) {
+                node.value = value;
+                return;
+            }
+        }
+        Node node = createNode(key, value);
+        collection.add(node);
+    }
+
+    private void resize(int capacity) {
+        /** 重新创建一个hashtable */
+        Collection<Node>[] temp = createTable(capacity);
+        for (int i = 0; i < temp.length; i++) {
+            temp[i] = createBucket();
+        }
+        /** 将原先的Node迁移到目前的hashtable中 */
+        for (int i = 0; i < buckets.length; i++) {
+            Collection<Node> bucket = buckets[i];
+            for (Node node : bucket) {
+                int index = Math.floorMod(node.key.hashCode(), temp.length);
+                temp[index].add(node);
+            }
+        }
+        this.buckets = temp;
+    }
+
+    @Override
+    public Set<K> keySet() {
+        for (int i = 0; i < buckets.length; i++) {
+            Collection<Node> collection = buckets[i];
+            for (Node node : collection) {
+                set.add(node.key);
+            }
+        }
+        return set;
+    }
+
+    @Override
+    public V remove(K key) {
+        if (get(key) == null) {
+            return null;
+        }
+        int index = Math.floorMod(key.hashCode(), buckets.length);
+        V val = null;
+        Collection<Node> collection = buckets[index];
+        for (Node node : collection) {
+            if (node.key.equals(key)) {
+                val = node.value;
+                collection.remove(node.key);
+            }
+        }
+        return val;
+    }
+
+    @Override
+    public V remove(K key, V value) {
+        if (get(key) == null) {
+            return null;
+        }
+        int index = Math.floorMod(key.hashCode(), buckets.length);
+        V val = null;
+        Collection<Node> collection = buckets[index];
+        for (Node node : collection) {
+            if (node.key.equals(key) && node.value.equals(value)) {
+                collection.remove(node.key);
+                return val;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Iterator<K> iterator() {
+        return keySet().iterator();
+    }
 }

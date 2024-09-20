@@ -1,0 +1,28 @@
+What would you like L to be?: 5
+Enter # strings to insert into each map: 10000000
+class hashmap.MyHashMapALBuckets: 10.97 sec
+class hashmap.MyHashMapLLBuckets: 10.47 sec
+class hashmap.MyHashMapTSBuckets: 14.17 sec
+class hashmap.MyHashMapHSBuckets: 19.63 sec
+class hashmap.MyHashMapPQBuckets: 17.55 sec
+
+
+Enter # strings to insert into hashmap.ULLMap: 10000
+class hashmap.ULLMap: 0.29 sec
+
+Enter # strings to insert into hashmap.MyHashMap: 10000
+class hashmap.MyHashMap: 0.00 sec
+
+Enter # strings to insert into Java's HashMap: 10000
+Java's Built-in HashMap: 0.00 sec
+
+What would you like L to be?: 5
+
+Enter # strings to insert into hashmap.ULLMap: 10000
+class hashmap.ULLMap: 0.22 sec
+
+Enter # strings to insert into your hashmap.MyHashMap: 10000
+class hashmap.MyHashMap: 0.02 sec
+
+Enter # strings to insert into Java's HashMap: 10000
+Java's Built-in HashMap: 0.01 sec
