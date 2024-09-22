@@ -236,4 +236,21 @@ class Utils {
         System.out.printf(msg, args);
         System.out.println();
     }
+
+    /** 在OBJECTS_DIR下创建sha1的分层存储，首先根据sha1的前两个字符创建一个文件夹，然后在创建名字为剩余字符的文件，将sha1存入 */
+    static void writeObjectWithPrefix(File file, String sha1, Object object) throws IOException {
+        String prefix = sha1.substring(0, 2);
+        String suffix = sha1.substring(2);
+        File dir = join(file, prefix);
+        if (!dir.exists()) {
+            dir.mkdir();
+        }
+        File fileToBeWrote = join(dir, suffix);
+        fileToBeWrote.createNewFile();
+        if (object instanceof Commit) {
+            writeObject(fileToBeWrote, (Commit)object);
+        } else {
+            writeContents(fileToBeWrote, object);
+        }
+    }
 }
