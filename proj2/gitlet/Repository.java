@@ -34,7 +34,7 @@ public class Repository {
         // 如果存在.gitlet那么就退出
         if (GITLET_DIR.exists()) {
             System.out.println("A Gitlet version-control system already exists in the current directory.");
-            System.exit(-1);
+            System.exit(0);
         }
         // 初始化
         GITLET_DIR.mkdir();
@@ -55,7 +55,15 @@ public class Repository {
         writeContents(HEAD_FILE, join(BRANCHES_DIR, "master").getPath());
     }
 
+    private static void checkIfInit() {
+        if (!GITLET_DIR.exists()) {
+            System.out.println("Not in an initialized Gitlet directory.");
+            System.exit(0);
+        }
+    }
+
     public static void logCommand() {
+        checkIfInit();
         String headCommitId = getHeadCommitId();
         Commit curCommit = getCommitById(headCommitId);
         while (curCommit != null) {
@@ -87,6 +95,7 @@ public class Repository {
 
     /** add指令：添加到暂存区 */
     public static void addCommand(String fileName) throws IOException {
+        checkIfInit();
         File fileToBeAdded = new File(fileName);
         if (!fileToBeAdded.exists()) { // 若文件不存在，则报错
             System.out.println("File does not exist.");
@@ -113,6 +122,7 @@ public class Repository {
     }
 
     public static void commitCommand(String message) throws IOException {
+        checkIfInit();
         // 首先判断一下暂存区有没有文件
         File[] files = STAGE_DIR.listFiles();
         if (files == null || files.length == 0) {
@@ -134,7 +144,7 @@ public class Repository {
                 fileName = fileName.substring(3);
                 newCommit.removeFile(fileName);
             } else {
-                String sha1 = sha1(readContents(file));
+                String sha1 = getFileSHA1(file);
                 newCommit.addFile(fileName, sha1);
                 writeObjectWithPrefix(BLOBS_DIR, sha1, readContents(file)); // 把暂存区里的文件保存到objects目录下
             }
@@ -188,6 +198,7 @@ public class Repository {
     }
 
     public static void statusCommand() {
+        checkIfInit();
         System.out.println("=== Branches ===");
         String curBranch = getCurBranch(); // HEAD指向的可能不是一个分支
         List<String> braches = getBranches();
@@ -213,11 +224,98 @@ public class Repository {
         }
         System.out.println();
         System.out.println("=== Modifications Not Staged For Commit ===");
+        List<String> modificationsFileNames = getModificationsFileNames();
+        for (String fileName : modificationsFileNames) {
+            System.out.println(fileName);
+        }
         System.out.println();
         System.out.println("=== Untracked Files ===");
+        List<String> untrackedFileNames = getUntrackedFileNames();
+        for (String fileName : untrackedFileNames) {
+            System.out.println(fileName);
+        }
         System.out.println();
     }
 
+    private static List<String> getModificationsFileNames() {
+        List<String> modificationsFileNames = new ArrayList<>();
+        List<String> stagedFiles = getStagedFiles();
+        Set<String> trackedFileNames = getTrackedFileNames();
+        Commit curCommit = getHeadCommit();
+        for (File file: CWD.listFiles()) {
+            String fileName = file.getName();
+            // 1. Tracked in the current commit, changed in the working directory, but not staged;
+            String CWDFileSHA1 = getFileSHA1(file);
+            String curCommitFileSHA1 = curCommit.getFileSHA1ByFileName(fileName);
+            if (trackedFileNames.contains(fileName) && !CWDFileSHA1.equals(curCommitFileSHA1)
+                    && !stagedFiles.contains(fileName)) {
+                modificationsFileNames.add(fileName + " (modified)");
+            }
+            // 2. Staged for addition, but with different contents than in the working directory;
+            String stagedFileSHA1 = getFileSHA1ByNameInStagingArea(fileName);
+            if (stagedFiles.contains(fileName) && !stagedFileSHA1.equals(CWDFileSHA1)) {
+                modificationsFileNames.add(fileName + " (modified)");
+            }
+        }
+        // 3. Staged for addition, but deleted in the working directory;
+        for (File file: STAGE_DIR.listFiles()) {
+            if (!file.getName().startsWith("rm_")) {
+                String fileName = file.getName();
+                File stagedFileName = new File(fileName);
+                if (!stagedFileName.exists()) {
+                    modificationsFileNames.add(fileName + " (deleted)");
+                }
+            }
+        }
+        // 4. Not staged for removal, but tracked in the current commit and deleted from the working directory.
+        List<String> stagedForRemovalFileNames = getStagedForRemovalFileNames();
+        for (String fileName: trackedFileNames) {
+            File curFile = new File(fileName);
+            if (!curFile.exists() && !stagedForRemovalFileNames.contains(fileName)) {
+                modificationsFileNames.add(fileName + " (deleted)");
+            }
+        }
+        return modificationsFileNames;
+    }
+
+    private static String getFileSHA1(File file) {
+        if (file.isFile()) {
+            return sha1(readContents(file));
+        }
+        return null;
+    }
+
+    private static List<String> getStagedForRemovalFileNames() {
+        List<String> stagedForRemovalFileNames = new ArrayList<>();
+        for (File file: STAGE_DIR.listFiles()) {
+            String fileName = file.getName();
+            if (fileName.startsWith("rm_")) {
+                stagedForRemovalFileNames.add(fileName.substring(3));
+            }
+        }
+        return stagedForRemovalFileNames;
+    }
+    private static String getFileSHA1ByNameInStagingArea(String fileName) {
+        for (File file : STAGE_DIR.listFiles()) {
+            if (file.getName().equals(fileName)) {
+                return sha1(readContents(file));
+            }
+        }
+        return null;
+    }
+    private static List<String> getUntrackedFileNames() {
+        List<String> untrackedFileNames = new ArrayList<>();
+        List<String> stagedFiles = getStagedFiles();
+        Set<String> trackedFileNames = getTrackedFileNames();
+        for (File file: CWD.listFiles()) {
+            String fileName = file.getName();
+            if (file.isFile() && !stagedFiles.contains(fileName) && !trackedFileNames.contains(fileName)) {
+                untrackedFileNames.add(fileName);
+            }
+        }
+        Collections.sort(untrackedFileNames);
+        return untrackedFileNames;
+    }
     private static List<String> getRemovedFileNames() {
         List<String> removedFileNames = new ArrayList<>();
         for (File file : STAGE_DIR.listFiles()) {
@@ -257,6 +355,7 @@ public class Repository {
     }
 
     public static void findCommand(String message) {
+        checkIfInit();
         boolean found = false;
         for (File dir : COMMITS_DIR.listFiles()) {
             for (File file : dir.listFiles()) {
@@ -273,6 +372,7 @@ public class Repository {
     }
 
     public static void branchCommand(String branchName) throws IOException {
+        checkIfInit();
         File branchPath = join(BRANCHES_DIR, branchName);
         if (branchPath.exists()) {
             System.out.println("A branch with that name already exists.");
@@ -285,6 +385,7 @@ public class Repository {
     }
 
     public static void checkoutCommand(String branchName) throws IOException {
+        checkIfInit();
         // 处理一下特殊情况
         // 1. 检查分支是否存在
         File branchPath = join(BRANCHES_DIR, branchName);
@@ -389,6 +490,7 @@ public class Repository {
     }
 
     public static void rmCommand(String fileName) throws IOException {
+        checkIfInit();
         Commit commit = getHeadCommit();
         Set<String> trackedFileNames = getTrackedFileNames();
         Set<String> stagedFileNames = getStagedFileNames();
@@ -433,6 +535,7 @@ public class Repository {
     }
 
     public static void checkoutCommandArg3(String fileName) throws IOException {
+        checkIfInit();
         Commit commit = getHeadCommit();
         checkFileInCommit(commit, fileName);
         File fileInCommit = commit.getFileByName(fileName);
@@ -447,6 +550,7 @@ public class Repository {
      * 首先检查是否存在这个commit，再检查这个commit是否存在这个file，之后就在这个commit中取出同名的file，覆盖当前目录下的file
      */
     public static void checkoutCommandArg4(String commitId, String fileName) throws IOException {
+        checkIfInit();
         String fullCommitId = checkCommitExistsByIdAndReturnFullId(commitId);
         Commit commit = getCommitById(fullCommitId);
         checkFileInCommit(commit, fileName);
@@ -464,7 +568,7 @@ public class Repository {
         List<String> commitIds = getCommitIds();
         boolean checkCommitExists = false;
         for (String id: commitIds) {
-            if (id.equals(commitId) || id.substring(0, 6).equals(commitId)) {
+            if (id.contains(commitId)) {
                 fullCommitId = id;
                 checkCommitExists = true;
                 break;
@@ -515,6 +619,7 @@ public class Repository {
     }
 
     public static void rmBranchCommand(String branchName) {
+        checkIfInit();
         File branch = join(BRANCHES_DIR, branchName);
         if (!branch.exists()) {
             System.out.println("A branch with that name does not exist.");
@@ -529,6 +634,7 @@ public class Repository {
     }
 
     public static void resetCommand(String commitId) throws IOException {
+        checkIfInit();
         // 1. If no commit with the given id exists, print No commit with that id exists.
         String fullCommitId = checkCommitExistsByIdAndReturnFullId(commitId);
         // 2. Check whether working file is untracked in the current branch and would be overwritten by the reset,
@@ -543,6 +649,7 @@ public class Repository {
     }
 
     public static void mergeCommand(String branchName) {
+        checkIfInit();
         // 1. If the split point is the same commit as the given branch, then we do nothing;
         // the merge is complete, and the operation ends with the message Given branch is an ancestor
         // of the current branch.

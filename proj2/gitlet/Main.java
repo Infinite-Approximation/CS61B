@@ -6,7 +6,34 @@ import java.io.IOException;
  *  @author Jack
  */
 public class Main {
+    private static void checkOpearands(String[] args, int numOfOperands) {
+        if (args.length - 1 != numOfOperands) {
+            System.out.println("Incorrect operands.");
+            System.exit(0);
+        }
+    }
 
+    private static void checkForCheckout(String[] args) {
+        int numOfOpearands = args.length - 1;
+        boolean isPass = true;
+        if (numOfOpearands == 1) {
+            isPass = true;
+        } else if (numOfOpearands == 2) {
+            if (!args[1].equals("--")) {
+                isPass = false;
+            }
+        } else if (numOfOpearands == 3) {
+            if (!args[2].equals("--")) {
+                isPass = false;
+            }
+        } else {
+            isPass = false;
+        }
+        if (!isPass) {
+            System.out.println("Incorrect operands.");
+            System.exit(0);
+        }
+    }
     /** Usage: java gitlet.Main ARGS, where ARGS contains
      *  <COMMAND> <OPERAND1> <OPERAND2> ... 
      */
@@ -22,21 +49,26 @@ public class Main {
         try {
             switch(firstArg) {
                 case "init":
+                    checkOpearands(args, 0);
                     Repository.initCommand();
                     break;
                 case "add":
+                    checkOpearands(args, 1);
                     fileName = args[1];
                     Repository.addCommand(fileName);
                     break;
                 case "rm":
+                    checkOpearands(args, 1);
                     fileName = args[1];
                     Repository.rmCommand(fileName);
                     break;
                 case "status":
+                    checkOpearands(args, 0);
                     Repository.statusCommand();
                     break;
                 case "commit":
-                    if (args.length == 1) {
+                    checkOpearands(args, 1);
+                    if (args.length == 1 || args[1].equals("")) {
                         System.out.println("Please enter a commit message.");
                         System.exit(0);
                     }
@@ -44,19 +76,24 @@ public class Main {
                     Repository.commitCommand(message);
                     break;
                 case "log":
+                    checkOpearands(args, 0);
                     Repository.logCommand();
                     break;
                 case "global-log":
+                    checkOpearands(args, 0);
                     Repository.globalLogCommand();
                     break;
                 case "find":
+                    checkOpearands(args, 1);
                     String searchMessage = args[1];
                     Repository.findCommand(searchMessage);
                 case "branch":
+                    checkOpearands(args, 1);
                     branchName = args[1];
                     Repository.branchCommand(branchName);
                     break;
                 case "checkout":
+                    checkForCheckout(args);
                     int length = args.length;
                     if (length == 2) {
                         branchName = args[1];
@@ -71,14 +108,17 @@ public class Main {
                     }
                     break;
                 case "rm-branch":
+                    checkOpearands(args, 1);
                     branchName = args[1];
                     Repository.rmBranchCommand(branchName);
                     break;
                 case "reset":
+                    checkOpearands(args, 1);
                     commitId = args[1];
                     Repository.resetCommand(commitId);
                     break;
                 case "merge":
+                    checkOpearands(args, 1);
                     branchName = args[1];
                     Repository.mergeCommand(branchName);
                 default:
