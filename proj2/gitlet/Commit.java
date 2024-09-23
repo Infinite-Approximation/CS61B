@@ -68,6 +68,10 @@ public class Commit implements Serializable {
         blobs.remove(fileName);
     }
 
+    public boolean hasFile(String fileName) {
+        return blobs.containsKey(fileName);
+    }
+
     public String getId() {
         return Utils.sha1(Utils.serialize(this));
     }

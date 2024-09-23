@@ -55,7 +55,7 @@ public class Main {
                 case "add":
                     checkOpearands(args, 1);
                     fileName = args[1];
-                    Repository.addCommand(fileName);
+                    Repository.addCommand(fileName, null);
                     break;
                 case "rm":
                     checkOpearands(args, 1);
@@ -73,7 +73,7 @@ public class Main {
                         System.exit(0);
                     }
                     String message = args[1];
-                    Repository.commitCommand(message);
+                    Repository.commitCommand(message, null, null);
                     break;
                 case "log":
                     checkOpearands(args, 0);
@@ -121,6 +121,7 @@ public class Main {
                     checkOpearands(args, 1);
                     branchName = args[1];
                     Repository.mergeCommand(branchName);
+                    break;
                 default:
                     System.out.println("No command with that name exists.");
                     System.exit(0);

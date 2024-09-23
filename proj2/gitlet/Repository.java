@@ -94,21 +94,26 @@ public class Repository {
     }
 
     /** add指令：添加到暂存区 */
-    public static void addCommand(String fileName) throws IOException {
+    public static void addCommand(String fileName, String branchName) throws IOException {
         checkIfInit();
-        File fileToBeAdded = new File(fileName);
-        if (!fileToBeAdded.exists()) { // 若文件不存在，则报错
-            System.out.println("File does not exist.");
-            System.exit(0);
+        File fileToBeAdded = null;
+        if (branchName == null) { // 这说明需要将当前目录下的文件添加到staging area
+            fileToBeAdded = new File(fileName);
+            if (!fileToBeAdded.exists()) { // 若文件不存在，则报错
+                System.out.println("File does not exist.");
+                System.exit(0);
+            }
+        } else { // 这说明需要将指定分支的文件写入到staging area
+            Commit branchCommit = getBranchCommitByName(branchName);
+            fileToBeAdded = branchCommit.getFileByName(fileName);
         }
         // 如果添加了a.txt，而暂存区又rm_a.txt，那么需要删除rm_a.txt
         File removedFile = join(STAGE_DIR, "rm_" + fileName);
         if (removedFile.exists()) {
             removedFile.delete();
         }
-        byte[] bytes = readContents(fileToBeAdded);
-        String fileToBeAddedSHA1 = sha1(bytes); // 计算添加文件的SHA-1值。
-        /** 需要取出当前commit的该文件的SHA-1值 */
+        String fileToBeAddedSHA1 = getFileSHA1(fileToBeAdded); // 计算添加文件的SHA-1值。
+        // 需要取出当前commit的该文件的SHA-1值
         Commit curCommit = getHeadCommit();
         String curCommitFileSHA1 = curCommit.getFileSHA1ByFileName(fileName);
         if (fileToBeAddedSHA1.equals(curCommitFileSHA1)) {
@@ -121,7 +126,7 @@ public class Repository {
         }
     }
 
-    public static void commitCommand(String message) throws IOException {
+    public static void commitCommand(String message, String parent1Id, String parent2Id) throws IOException {
         checkIfInit();
         // 首先判断一下暂存区有没有文件
         File[] files = STAGE_DIR.listFiles();
@@ -135,9 +140,16 @@ public class Repository {
         Commit newCommit = new Commit(); // 新的Commit
         newCommit.setMessage(message);
         newCommit.setTimestamp(new Date());
-        newCommit.setParent1Id(headCommitId);
+        if (parent1Id == null) {
+            newCommit.setParent1Id(headCommitId);
+            newCommit.setBlobs(new TreeMap<>(curCommit.getBlobs()));
+        } else {
+            newCommit.setParent1Id(parent1Id);
+            newCommit.setParent2Id(parent2Id);
+            Commit commit = getCommitById(parent1Id);
+            newCommit.setBlobs(new TreeMap<>(commit.getBlobs()));
+        }
         /** 建立新commit的Map */
-        newCommit.setBlobs(new TreeMap<>(curCommit.getBlobs()));
         for (File file : files) {
             String fileName = file.getName();
             if (fileName.startsWith("rm_")) { // 处理暂存删除的文件
@@ -279,6 +291,9 @@ public class Repository {
     }
 
     private static String getFileSHA1(File file) {
+        if (file == null) {
+            return null;
+        }
         if (file.isFile()) {
             return sha1(readContents(file));
         }
@@ -648,14 +663,308 @@ public class Repository {
         clearStagingArea();
     }
 
-    public static void mergeCommand(String branchName) {
+    /**
+     * 一个未跟踪文件如果在givenCommit修改了，在curCommit删除了，说明冲突了，这个文件会被覆盖
+     */
+    private static void preCheckRule3(String untrackedFileName, Commit givenCommit, Commit latestCommonAncestor) {
+        boolean flag1 = latestCommonAncestor.hasFile(untrackedFileName);
+        boolean flag2 = givenCommit.hasFile(untrackedFileName);
+        boolean flag3 = flag1 && flag2 && latestCommonAncestor.getFileSHA1ByFileName(untrackedFileName)
+                        .equals(givenCommit.getFileSHA1ByFileName(untrackedFileName));
+        if (flag3) {
+            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.exit(0);
+        }
+    }
+
+    /**
+     * 一个未跟踪文件如果在givenCommit，但是不在split point commit的时候，那么就会被覆盖，对应rule5
+     */
+    private static void preCheckRule5(String untrackedFileName, Commit givenCommit, Commit latestCommonAncestor) {
+        if (givenCommit.hasFile(untrackedFileName) && !latestCommonAncestor.hasFile(untrackedFileName)) {
+            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.exit(0);
+        }
+    }
+
+    public static void mergeCommand(String branchName) throws IOException {
         checkIfInit();
+        // Failure cases
+        // 1.  If there are staged additions or removals present, print the error message You have uncommitted changes.
+        checkStagingAreaIsEmpty();
+        // 2. If a branch with the given name does not exist, print the error message A branch with that name
+        // does not exist.
+        checkBranchExist(branchName);
+        // 3. If attempting to merge a branch with itself, print the error message Cannot merge a branch with itself.
+        Commit curCommit = getHeadCommit();
+        Commit givenCommit = getBranchCommitByName(branchName);
+        if (curCommit.getId().equals(givenCommit.getId())) {
+            System.out.println("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
+        // 4. If an untracked file in the current commit would be overwritten or deleted by the merge,
+        // print There is an untracked file in the way; delete it, or add and commit it first.
+        Commit latestCommonAncestor = getLatestCommonAncestor(curCommit, givenCommit);
+        List<String> untrackedFileNames = getUntrackedFileNames();
+        for (String untrackedFileName : untrackedFileNames) {
+            preCheckRule3(untrackedFileName, givenCommit, latestCommonAncestor);
+            preCheckRule5(untrackedFileName, givenCommit, latestCommonAncestor);
+        }
+        // 首先处理两个特殊情况
         // 1. If the split point is the same commit as the given branch, then we do nothing;
         // the merge is complete, and the operation ends with the message Given branch is an ancestor
         // of the current branch.
-
+        if (latestCommonAncestor.getId().equals(givenCommit.getId())) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            System.exit(0);
+        }
         // 2. If the split point is the current branch, then the effect is to check out the given branch,
         // and the operation ends after printing the message Current branch fast-forwarded.
+        if (latestCommonAncestor.getId().equals(curCommit.getId())) {
+            checkoutCommand(branchName);
+            System.out.println("Current branch fast-forwarded.");
+            System.exit(0);
+        }
+        // 然后写八条规则
+        Set<String> unionFileNames = getUnionFileNames(curCommit, givenCommit, latestCommonAncestor);
+        boolean hasConflict = false, conflictFlag = false;
+        for (String fileName : unionFileNames) {
+            File curFile = curCommit.getFileByName(fileName);
+            String curFileSha1 = getFileSHA1(curFile);
+            File givenFile = givenCommit.getFileByName(fileName);
+            String givenFileSha1 = getFileSHA1(givenFile);
+            File latestCommonAncestorFile = latestCommonAncestor.getFileByName(fileName);
+            String latestCommonAncestorFileSha1 = getFileSHA1(latestCommonAncestorFile);
+            // 1. modified in givenCommit but not curCommit -> givenCommit
+            rule1(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                            curFile, givenFile);
+            // 2. modified in curCommit but not givenCommit -> curCommit
+            rule2(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+            // 3. modified in givenCommit and in curCommit
+            hasConflict = rule3(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+            if (hasConflict) {
+                conflictFlag = true;
+            }
+            // 4. Not in split commit nor givenCommit but in curCommit
+            rule4(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+            // 5， Not in split commit nor curCommit but in givenCommit
+            rule5(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+            // 6. unmodified in curCommit but not present in givenCommit
+            rule6(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+            // 7. unmodified in givenCommit but not present in curCommit
+            rule7(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
+                    curFile, givenFile);
+        }
+        if (conflictFlag) {
+            System.out.println("Encountered a merge conflict.");
+        }
+        String curBranchName = getCurBranch();
+        String message = "Merged " + branchName + " into " + curBranchName + ".";
+        commitCommand(message, curCommit.getId(), givenCommit.getId());
+    }
 
+    // 1. modified in givenCommit but not curCommit -> givenCommit
+    private static void rule1(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                            File curFile, File givenFile) throws IOException {
+        if (curFileSha1 != null && latestCommonAncestorFileSha1 != null
+                && curFileSha1.equals(latestCommonAncestorFileSha1) && givenFileSha1 != null
+                && !givenFileSha1.equals(latestCommonAncestorFileSha1)) {
+            File file = new File(fileName);
+            // 先修改工作区
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeContents(file, readContents(givenFile));
+            // 再修改暂存区
+            addCommand(fileName, branchName);
+        }
+    }
+
+    // 2. modified in curCommit but not givenCommit -> curCommit
+    private static void rule2(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        if (curFileSha1 != null && latestCommonAncestorFileSha1 != null && givenFileSha1 != null
+            && !curFileSha1.equals(latestCommonAncestorFileSha1)
+            && givenFileSha1.equals(latestCommonAncestorFileSha1)) {
+            // 不需要做任何事情
+        }
+    }
+
+    // 3. modified in givenCommit and in curCommit
+    private static boolean rule3(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        // 如果以相同的方式修改，如同时被删除或者同时被修改，那么就不做任何事情
+        boolean hasConflict = false;
+        // 但如果一方被删除，另一方被修改，那么就是冲突！！！
+        if (curFileSha1 == null && givenFileSha1 != null && latestCommonAncestorFileSha1 != null
+            && !latestCommonAncestorFileSha1.equals(givenFileSha1)) {
+            File file = new File(fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeConflict(file, "", readContentsAsString(givenFile));
+            hasConflict = true;
+        }
+        if (curFileSha1 != null && givenFileSha1 == null && latestCommonAncestorFileSha1 != null
+                && !latestCommonAncestorFileSha1.equals(curFileSha1)) {
+            File file = new File(fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeConflict(file, readContentsAsString(curFile), "");
+            hasConflict = true;
+        }
+        // 如果两者以不同的方式修改
+        if (curFileSha1 != null && givenFileSha1 != null && latestCommonAncestorFileSha1 != null
+                && !latestCommonAncestorFileSha1.equals(curFileSha1)
+                && !latestCommonAncestorFileSha1.equals(givenFileSha1)
+                && !givenFileSha1.equals(curFileSha1)) {
+            File file = new File(fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeConflict(file, readContentsAsString(curFile), readContentsAsString(givenFile));
+            hasConflict = true;
+        }
+        return hasConflict;
+    }
+
+    // 4. Not in split commit nor givenCommit but in curCommit
+    private static void rule4(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        if (latestCommonAncestorFileSha1 == null && curFileSha1 != null && givenFileSha1 == null) {
+            // 什么也不做
+        }
+    }
+
+    // 5. Not in split commit nor curCommit but in givenCommit
+    private static void rule5(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        if (latestCommonAncestorFileSha1 == null && curFileSha1 == null && givenFileSha1 != null) {
+            File file = new File(fileName);
+            // 先修改工作区
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            writeContents(file, readContents(givenFile));
+            // 再修改暂存区
+            addCommand(fileName, branchName);
+        }
+    }
+
+    // 6. unmodified in curCommit but not present in givenBranch
+    private static void rule6(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        if (latestCommonAncestorFileSha1 != null && curFileSha1 != null
+                && latestCommonAncestorFileSha1.equals(curFileSha1)
+                && givenFileSha1 == null) {
+            rmCommand(fileName);
+        }
+    }
+
+    // 7. unmodified in givenCommit but not present in curCommit
+    private static void rule7(String fileName, String curFileSha1, String givenFileSha1,
+                              String latestCommonAncestorFileSha1, String branchName,
+                              File curFile, File givenFile) throws IOException {
+        if (latestCommonAncestorFileSha1 != null && givenFileSha1 != null
+                && latestCommonAncestorFileSha1.equals(givenFileSha1)
+                && curFile == null) {
+            // 什么也不做
+        }
+    }
+    private static void writeConflict(File file, String curContent, String givenContent) {
+        writeContents(file, "<<<<<<< HEAD\n");
+        writeContents(file, curContent);
+        writeContents(file, "=======\n");
+        writeContents(file, givenContent);
+        writeContents(file, ">>>>>>>");
+    }
+    private static Set<String> getUnionFileNames(Commit a, Commit b, Commit c) {
+        Set<String> fileNames1 = a.getFileNames();
+        Set<String> fileNames2 = b.getFileNames();
+        Set<String> fileNames3 = c.getFileNames();
+        Set<String> fileNames = new HashSet<>(a.getFileNames());  // 创建一个新的集合
+        fileNames.addAll(fileNames2);
+        fileNames.addAll(fileNames3);
+        return fileNames;
+    }
+
+    private static void checkStagingAreaIsEmpty() {
+        if (getStagedFileNames().size() != 0) {
+            System.out.println("You have uncommitted changes.");
+            System.exit(0);
+        }
+    }
+
+    private static void checkBranchExist(String branchName) {
+        File file = join(BRANCHES_DIR, branchName);
+        if (!file.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+    }
+
+    private static Commit getBranchCommitByName(String name) {
+        File file = join(BRANCHES_DIR, name);
+        String commitSha1 = readContentsAsString(file);
+        Commit commit = getCommitById(commitSha1);
+        return commit;
+    }
+
+    private static Commit getLatestCommonAncestor(Commit commitA, Commit commitB) {
+        List<String> ancestorsOfCommitA = getAllAncestors(commitA);
+        Queue<Commit> ancestorsQueue = new LinkedList<>();
+        ancestorsQueue.add(commitB);
+        while (!ancestorsQueue.isEmpty()) {
+            commitB = ancestorsQueue.poll();
+            if (ancestorsOfCommitA.contains(commitB.getId())) {
+                return commitB;
+            }
+            addParentsIdToQueue(commitB, ancestorsQueue);
+        }
+        return null;
+    }
+
+    private static List<String> getAllAncestors(Commit commit) {
+        List<String> ancestors = new LinkedList<>();
+        Queue<Commit> ancestorsQueue = new LinkedList<>();
+        ancestorsQueue.add(commit);
+        ancestors.add(commit.getId());
+        while (!ancestorsQueue.isEmpty()) {
+            commit = ancestorsQueue.poll();
+            addParentsCommitAndIdToQueue(commit, ancestors, ancestorsQueue);
+        }
+        return ancestors;
+    }
+
+    private static void addParentsCommitAndIdToQueue(Commit commit, List<String> ancestors, Queue<Commit> ancestorsQueue) {
+        if (commit.getParent1Id() != null) {
+            ancestorsQueue.add(getCommitById(commit.getParent1Id()));
+            ancestors.add(commit.getParent1Id());
+        }
+        if (commit.getParent2Id() != null) {
+            ancestorsQueue.add(getCommitById(commit.getParent2Id()));
+            ancestors.add(commit.getParent2Id());
+        }
+    }
+
+    private static void addParentsIdToQueue(Commit commit, Queue<Commit> ancestorsQueue) {
+        if (commit.getParent1Id() != null) {
+            ancestorsQueue.add(getCommitById(commit.getParent1Id()));
+        }
+        if (commit.getParent2Id() != null) {
+            ancestorsQueue.add(getCommitById(commit.getParent2Id()));
+        }
     }
 }
