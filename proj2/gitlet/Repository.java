@@ -884,8 +884,11 @@ public class Repository {
         }
     }
     private static void writeConflict(File file, String curContent, String givenContent) throws IOException {
-        String s = "<<<<<<< HEAD\n" + curContent + "=======\n" + givenContent + ">>>>>>>";
-        writeContents(file, s);
+        String lineSeparator = System.lineSeparator();
+        String mergeContent = "<<<<<<< HEAD" + lineSeparator
+                + curContent + "=======" + lineSeparator
+                + givenContent + ">>>>>>>";
+        writeContents(file, mergeContent);
         // 再修改暂存区
         addCommand(file.getName(), null);
     }
