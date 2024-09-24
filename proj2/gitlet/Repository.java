@@ -889,6 +889,7 @@ public class Repository {
                 + curContent + "=======" + lineSeparator
                 + givenContent + ">>>>>>>";
         writeContents(file, mergeContent);
+        System.out.println("mergeContent:\n" + mergeContent);
         // 再修改暂存区
         addCommand(file.getName(), null);
     }
