@@ -883,12 +883,20 @@ public class Repository {
             // 什么也不做
         }
     }
-    private static void writeConflict(File file, String curContent, String givenContent) {
-        writeContents(file, "<<<<<<< HEAD\n");
-        writeContents(file, curContent);
-        writeContents(file, "=======\n");
-        writeContents(file, givenContent);
-        writeContents(file, ">>>>>>>");
+    private static void writeConflict(File file, String curContent, String givenContent) throws IOException {
+        String s = "<<<<<<< HEAD\n" + curContent + "=======\n" + givenContent + ">>>>>>>";
+        writeContents(file, s);
+//        appendContents(file, "<<<<<<< HEAD\n");
+//        appendContents(file, curContent);
+//        appendContents(file, "=======\n");
+//        appendContents(file, givenContent);
+//        appendContents(file, ">>>>>>>\n");
+        // 再修改暂存区
+        addCommand(file.getName(), null);
+//        for (File file1: STAGE_DIR.listFiles()) {
+//            System.out.println(file.getName());
+//            System.out.println(readContentsAsString(file));
+//        }
     }
     private static Set<String> getUnionFileNames(Commit a, Commit b, Commit c) {
         Set<String> fileNames1 = a.getFileNames();
