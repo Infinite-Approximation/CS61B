@@ -886,10 +886,10 @@ public class Repository {
     private static void writeConflict(File file, String curContent, String givenContent) throws IOException {
         String lineSeparator = System.lineSeparator();
         String mergeContent = "<<<<<<< HEAD" + lineSeparator
-                + curContent + "=======" + lineSeparator
-                + givenContent + ">>>>>>>";
+                + curContent + lineSeparator + "=======" + lineSeparator
+                + givenContent + lineSeparator + ">>>>>>>";
         writeContents(file, mergeContent);
-//        System.out.println("mergeContent:\n" + mergeContent);
+        System.out.println("mergeContent:\n" + mergeContent);
         // 再修改暂存区
         addCommand(file.getName(), null);
     }
