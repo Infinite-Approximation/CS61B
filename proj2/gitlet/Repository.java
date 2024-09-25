@@ -33,7 +33,7 @@ public class Repository {
     public static final File STAGE_DIR = join(GITLET_DIR, "index"); // 用rm_代表removal
     public static final File REMOTE_DIR = join(GITLET_DIR, "refs", "remotes");
     public static final File CONFIG = join(GITLET_DIR, "config");
-    public static final File LOG = new File("/mnt/d/Users/jkd/个人重要资料/国内外优秀课程/cs61b/proj2/log.txt");
+//    public static final File LOG = new File("/mnt/d/Users/jkd/个人重要资料/国内外优秀课程/cs61b/proj2/log.txt");
     public static void initCommand() throws IOException {
         // 如果存在.gitlet那么就退出
         if (GITLET_DIR.exists()) {
