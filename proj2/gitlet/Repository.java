@@ -1,5 +1,4 @@
 package gitlet;
-import edu.princeton.cs.algs4.ST;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,11 +32,11 @@ public class Repository {
     public static final File STAGE_DIR = join(GITLET_DIR, "index"); // 用rm_代表removal
     public static final File REMOTE_DIR = join(GITLET_DIR, "refs", "remotes");
     public static final File CONFIG = join(GITLET_DIR, "config");
-//    public static final File LOG = new File("/mnt/d/Users/jkd/个人重要资料/国内外优秀课程/cs61b/proj2/log.txt");
     public static void initCommand() throws IOException {
         // 如果存在.gitlet那么就退出
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            System.out.println("A Gitlet version-control system already exists in the " +
+                    "current directory.");
             System.exit(0);
         }
         // 初始化
@@ -146,7 +145,8 @@ public class Repository {
         }
     }
 
-    public static void commitCommand(String message, String parent1Id, String parent2Id) throws IOException {
+    public static void commitCommand(String message, String parent1Id, String parent2Id)
+            throws IOException {
         checkIfInit();
         // 首先判断一下暂存区有没有文件
         File[] files = STAGE_DIR.listFiles();
@@ -277,15 +277,15 @@ public class Repository {
         for (File file: CWD.listFiles()) {
             String fileName = file.getName();
             // 1. Tracked in the current commit, changed in the working directory, but not staged;
-            String CWDFileSHA1 = getFileSHA1(file);
+            String cWDFileSHA1 = getFileSHA1(file);
             String curCommitFileSHA1 = curCommit.getFileSHA1ByFileName(fileName);
-            if (trackedFileNames.contains(fileName) && !CWDFileSHA1.equals(curCommitFileSHA1)
+            if (trackedFileNames.contains(fileName) && !cWDFileSHA1.equals(curCommitFileSHA1)
                     && !stagedFiles.contains(fileName)) {
                 modificationsFileNames.add(fileName + " (modified)");
             }
             // 2. Staged for addition, but with different contents than in the working directory;
             String stagedFileSHA1 = getFileSHA1ByNameInStagingArea(fileName);
-            if (stagedFiles.contains(fileName) && !stagedFileSHA1.equals(CWDFileSHA1)) {
+            if (stagedFiles.contains(fileName) && !stagedFileSHA1.equals(cWDFileSHA1)) {
                 modificationsFileNames.add(fileName + " (modified)");
             }
         }
@@ -299,7 +299,8 @@ public class Repository {
                 }
             }
         }
-        // 4. Not staged for removal, but tracked in the current commit and deleted from the working directory.
+        // 4. Not staged for removal, but tracked in the current commit and deleted
+        // from the working directory.
         List<String> stagedForRemovalFileNames = getStagedForRemovalFileNames();
         for (String fileName: trackedFileNames) {
             File curFile = new File(fileName);
@@ -344,7 +345,8 @@ public class Repository {
         Set<String> trackedFileNames = getTrackedFileNames();
         for (File file: CWD.listFiles()) {
             String fileName = file.getName();
-            if (file.isFile() && !stagedFiles.contains(fileName) && !trackedFileNames.contains(fileName)) {
+            if (file.isFile() && !stagedFiles.contains(fileName)
+                    && !trackedFileNames.contains(fileName)) {
                 untrackedFileNames.add(fileName);
             }
         }
@@ -478,12 +480,15 @@ public class Repository {
         Set<String> commitFileNames = getTrackedFileNameByBranchPathOrID(branchPathOrId);
         for (File file: CWD.listFiles()) {
             // 如果一个文件没有被当前commit追踪，但是会被指定的commit覆盖，那么就不行！
-            if (!trackedFileNames.contains(file.getName()) && commitFileNames.contains(file.getName())) {
-                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            if (!trackedFileNames.contains(file.getName())
+                    && commitFileNames.contains(file.getName())) {
+                System.out.println("There is an untracked file in the way; delete it, " +
+                        "or add and commit it first.");
                 System.exit(0);
             }
             // 如果一个文件被当前commit追踪，但是没有在指定的commit中追踪，就需要删除！
-            if (trackedFileNames.contains(file.getName()) && !commitFileNames.contains(file.getName())) {
+            if (trackedFileNames.contains(file.getName())
+                    && !commitFileNames.contains(file.getName())) {
                 file.delete();
             }
         }
@@ -559,9 +564,9 @@ public class Repository {
                 File deleteFile = join(STAGE_DIR, "rm_" + fileName);
                 deleteFile.createNewFile();
                 // 删除文件
-                File CWDFile = new File(fileName);
-                if (CWDFile.exists()) {
-                    CWDFile.delete();
+                File cWDFile = new File(fileName);
+                if (cWDFile.exists()) {
+                    cWDFile.delete();
                 }
 
             }
@@ -699,7 +704,8 @@ public class Repository {
         checkIfInit();
         // 1. If no commit with the given id exists, print No commit with that id exists.
         String fullCommitId = checkCommitExistsByIdAndReturnFullId(commitId);
-        // 2. Check whether working file is untracked in the current branch and would be overwritten by the reset,
+        // 2. Check whether working file is untracked in the current branch
+        // and would be overwritten by the reset,
         // 3. Removes tracked files that are not present in that commit
         checkOverwriteAndDelete(fullCommitId);
         // 4. 将目标commit的内容复制到当前目录
@@ -713,13 +719,16 @@ public class Repository {
     /**
      * 一个未跟踪文件如果在givenCommit修改了，在curCommit删除了，说明冲突了，这个文件会被覆盖
      */
-    private static void preCheckRule3(String untrackedFileName, Commit givenCommit, Commit latestCommonAncestor) {
+    private static void preCheckRule3(String untrackedFileName, Commit givenCommit,
+                                      Commit latestCommonAncestor) {
         boolean flag1 = latestCommonAncestor.hasFile(untrackedFileName);
         boolean flag2 = givenCommit.hasFile(untrackedFileName);
-        boolean flag3 = flag1 && flag2 && latestCommonAncestor.getFileSHA1ByFileName(untrackedFileName)
-                        .equals(givenCommit.getFileSHA1ByFileName(untrackedFileName));
+        boolean flag3 = flag1 && flag2 && latestCommonAncestor
+                .getFileSHA1ByFileName(untrackedFileName)
+                .equals(givenCommit.getFileSHA1ByFileName(untrackedFileName));
         if (flag3) {
-            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.out.println("There is an untracked file in the way; delete it, " +
+                    "or add and commit it first.");
             System.exit(0);
         }
     }
@@ -727,54 +736,67 @@ public class Repository {
     /**
      * 一个未跟踪文件如果在givenCommit，但是不在split point commit的时候，那么就会被覆盖，对应rule5
      */
-    private static void preCheckRule5(String untrackedFileName, Commit givenCommit, Commit latestCommonAncestor) {
-        if (givenCommit.hasFile(untrackedFileName) && !latestCommonAncestor.hasFile(untrackedFileName)) {
-            System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+    private static void preCheckRule5(String untrackedFileName, Commit givenCommit,
+                                      Commit latestCommonAncestor) {
+        if (givenCommit.hasFile(untrackedFileName) && !latestCommonAncestor
+                .hasFile(untrackedFileName)) {
+            System.out.println("There is an untracked file in the way; delete it, " +
+                    "or add and commit it first.");
             System.exit(0);
         }
     }
 
+    /**
+     * Failure cases
+     * 1. If there are staged additions or removals present,
+     *    print the error message You have uncommitted changes.
+     * 2. If a branch with the given name does not exist,
+     *    print the error message A branch with that name does not exist.
+     * 3. If attempting to merge a branch with itself, print the error message Cannot
+     *    merge a branch with itself.
+     * 4. If an untracked file in the current commit would be overwritten or deleted by the merge,
+     *    print There is an untracked file in the way; delete it, or add and commit it first.
+     * 两个特殊情况
+     *    1. If the split point is the same commit as the given branch, then we do nothing;
+     *       the merge is complete, and the operation ends with the message Given branch is
+     *       an ancestor of the current branch.
+     *    2. If the split point is the current branch, then the effect is to check out the given branch,
+     *       and the operation ends after printing the message Current branch fast-forwarded.
+     * @param gitDir
+     * @param branchName
+     * @throws IOException
+     */
     public static void mergeCommand(String gitDir, String branchName) throws IOException {
         checkIfInit();
-        // Failure cases
-        // 1.  If there are staged additions or removals present, print the error message You have uncommitted changes.
+        // Failure cases 1
         checkStagingAreaIsEmpty();
-        // 2. If a branch with the given name does not exist, print the error message A branch with that name
-        // does not exist.
+        // Failure cases 2
         checkBranchExist(null, branchName);
-        // 3. If attempting to merge a branch with itself, print the error message Cannot merge a branch with itself.
         Commit givenCommit = null;
         Commit curCommit = getHeadCommit(null);
         if (branchName.contains("/")) {
-            int index = branchName.lastIndexOf('/');
-            String remoteDir = branchName.substring(0, index);
-            String remoteBranch = branchName.substring(index + 1);
             givenCommit = getBranchCommitByName(REMOTE_DIR.getPath(), branchName);
         } else {
             givenCommit = getBranchCommitByName(null, branchName);
         }
+        // Failure cases 3
         if (curCommit.getId().equals(givenCommit.getId())) {
             System.out.println("Cannot merge a branch with itself.");
             System.exit(0);
         }
-        // 4. If an untracked file in the current commit would be overwritten or deleted by the merge,
-        // print There is an untracked file in the way; delete it, or add and commit it first.
+        // Failure cases 4
         Commit latestCommonAncestor = getLatestCommonAncestor(curCommit, givenCommit);
         List<String> untrackedFileNames = getUntrackedFileNames();
         for (String untrackedFileName : untrackedFileNames) {
             preCheckRule3(untrackedFileName, givenCommit, latestCommonAncestor);
             preCheckRule5(untrackedFileName, givenCommit, latestCommonAncestor);
         }
-        // 首先处理两个特殊情况
-        // 1. If the split point is the same commit as the given branch, then we do nothing;
-        // the merge is complete, and the operation ends with the message Given branch is an ancestor
-        // of the current branch.
+        // 特殊情况1
         if (latestCommonAncestor.getId().equals(givenCommit.getId())) {
             System.out.println("Given branch is an ancestor of the current branch.");
             System.exit(0);
         }
-        // 2. If the split point is the current branch, then the effect is to check out the given branch,
-        // and the operation ends after printing the message Current branch fast-forwarded.
+        // 特殊情况2
         if (latestCommonAncestor.getId().equals(curCommit.getId())) {
             checkoutCommand(null, branchName);
             System.out.println("Current branch fast-forwarded.");
@@ -792,13 +814,13 @@ public class Repository {
             String latestCommonAncestorFileSha1 = getFileSHA1(latestCommonAncestorFile);
             // 1. modified in givenCommit but not curCommit -> givenCommit
             rule1(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
-                            curFile, givenFile);
+                    curFile, givenFile);
             // 2. modified in curCommit but not givenCommit -> curCommit
             rule2(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
                     curFile, givenFile);
             // 3. modified in givenCommit and in curCommit
-            hasConflict = rule3(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
-                    curFile, givenFile);
+            hasConflict = rule3(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1,
+                    branchName, curFile, givenFile);
             if (hasConflict) {
                 conflictFlag = true;
             }
@@ -849,6 +871,7 @@ public class Repository {
             && !curFileSha1.equals(latestCommonAncestorFileSha1)
             && givenFileSha1.equals(latestCommonAncestorFileSha1)) {
             // 不需要做任何事情
+            int a = 3;
         }
     }
 
@@ -898,6 +921,7 @@ public class Repository {
                               File curFile, File givenFile) throws IOException {
         if (latestCommonAncestorFileSha1 == null && curFileSha1 != null && givenFileSha1 == null) {
             // 什么也不做
+            int a = 3;
         }
     }
 
@@ -936,9 +960,11 @@ public class Repository {
                 && latestCommonAncestorFileSha1.equals(givenFileSha1)
                 && curFile == null) {
             // 什么也不做
+            int a = 3;
         }
     }
-    private static void writeConflict(File file, String curContent, String givenContent) throws IOException {
+    private static void writeConflict(File file, String curContent, String givenContent)
+            throws IOException {
         String lineSeparator = System.lineSeparator();
         String mergeContent = "<<<<<<< HEAD" + lineSeparator
                 + curContent + "=======" + lineSeparator
@@ -1026,7 +1052,8 @@ public class Repository {
         return ancestors;
     }
 
-    private static void addParentsCommitAndIdToQueue(Commit commit, List<String> ancestors, Queue<Commit> ancestorsQueue) {
+    private static void addParentsCommitAndIdToQueue(Commit commit, List<String> ancestors,
+                                                     Queue<Commit> ancestorsQueue) {
         if (commit.getParent1Id() != null) {
             ancestorsQueue.add(getCommitById(null, commit.getParent1Id()));
             ancestors.add(commit.getParent1Id());
@@ -1100,7 +1127,8 @@ public class Repository {
         }
     }
 
-    private static boolean checkRemoteBranchExist(String remoteName, String branchName) throws IOException {
+    private static boolean checkRemoteBranchExist(String remoteName, String branchName)
+            throws IOException {
         String remoteDirName = getRemoteDirName(remoteName);
         File file = join(remoteDirName, "refs", "heads", branchName);
         if (!file.exists()) {
@@ -1111,7 +1139,8 @@ public class Repository {
     }
 
     // 将本地分支上多的commit推送到远端仓库，并且将commit对应的blob也推送上去
-    private static void appendCommitsToRemote(String remoteName, String branchName) throws IOException {
+    private static void appendCommitsToRemote(String remoteName, String branchName)
+            throws IOException {
         Commit curCommit = getBranchCommitByName(null, branchName);
         String remoteDirName = getRemoteDirName(remoteName);
         Commit remoteCurCommit = getBranchCommitByName(remoteDirName, branchName);

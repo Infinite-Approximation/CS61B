@@ -248,7 +248,7 @@ class Utils {
         File fileToBeWrote = join(dir, suffix);
         fileToBeWrote.createNewFile();
         if (object instanceof Commit) {
-            writeObject(fileToBeWrote, (Commit)object);
+            writeObject(fileToBeWrote, (Commit) object);
         } else {
             writeContents(fileToBeWrote, object);
         }

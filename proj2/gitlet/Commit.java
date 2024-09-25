@@ -26,7 +26,7 @@ public class Commit implements Serializable {
     private String parent2Id;
 //    private transient Commit parent2;
     /** 自己的SHA-1值 */
-    private String Id;
+    private String id;
     /** 用来说明这个commit是HEAD指向的分支合并到哪个分支上产生的 */
 //    private String mergedBranch;
     /** fileName->blobs文件哈希值 的Map */
@@ -135,7 +135,7 @@ public class Commit implements Serializable {
 //    }
 
     public void setId(String id) {
-        Id = id;
+        id = id;
     }
 
 //    public void setMergedBranch(String mergedBranch) {
@@ -148,16 +148,22 @@ public class Commit implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        if (this == object) return true;
-        if (object == null || getClass() != object.getClass()) return false;
+        if (this == object) {
+            return true;
+        }
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
         Commit commit = (Commit) object;
-        return Objects.equals(message, commit.message) && Objects.equals(timestamp, commit.timestamp)
-                && Objects.equals(parent1Id, commit.parent1Id) && Objects.equals(parent2Id, commit.parent2Id)
-                && Objects.equals(Id, commit.Id) && Objects.equals(blobs, commit.blobs);
+        return Objects.equals(message, commit.message)
+                && Objects.equals(timestamp, commit.timestamp)
+                && Objects.equals(parent1Id, commit.parent1Id)
+                && Objects.equals(parent2Id, commit.parent2Id)
+                && Objects.equals(id, commit.id) && Objects.equals(blobs, commit.blobs);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(message, timestamp, parent1Id, parent2Id, Id, blobs);
+        return Objects.hash(message, timestamp, parent1Id, parent2Id, id, blobs);
     }
 }
