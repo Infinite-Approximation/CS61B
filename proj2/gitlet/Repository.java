@@ -119,7 +119,12 @@ public class Repository {
                 System.exit(0);
             }
         } else { // 这说明需要将指定分支的某一文件写入到staging area
-            Commit branchCommit = getBranchCommitByName(REMOTE_DIR.getPath(), branchName);
+            Commit branchCommit = null;
+            if (branchName.contains("/")) {
+                branchCommit = getBranchCommitByName(REMOTE_DIR.getPath(), branchName);
+            } else {
+                branchCommit = getBranchCommitByName(null, branchName);
+            }
             fileToBeAdded = branchCommit.getFileByName(null, fileName);
         }
         // 如果添加了a.txt，而暂存区又rm_a.txt，那么需要删除rm_a.txt
