@@ -1,9 +1,10 @@
 package gitlet;
-
 import edu.princeton.cs.algs4.ST;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static gitlet.Utils.*;
@@ -27,9 +28,12 @@ public class Repository {
     public static final File GITLET_DIR = join(CWD, ".gitlet");
     public static final File COMMITS_DIR = join(GITLET_DIR, "commits");
     public static final File BLOBS_DIR = join(GITLET_DIR, "blobs");
-    public static final File BRANCHES_DIR = join(GITLET_DIR, "refs", "heads");
+    public static final File  BRANCHES_DIR = join(GITLET_DIR, "refs", "heads");
     public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
     public static final File STAGE_DIR = join(GITLET_DIR, "index"); // 用rm_代表removal
+    public static final File REMOTE_DIR = join(GITLET_DIR, "refs", "remotes");
+    public static final File CONFIG = join(GITLET_DIR, "config");
+    public static final File LOG = new File("/mnt/d/Users/jkd/个人重要资料/国内外优秀课程/cs61b/proj2/log.txt");
     public static void initCommand() throws IOException {
         // 如果存在.gitlet那么就退出
         if (GITLET_DIR.exists()) {
@@ -42,6 +46,8 @@ public class Repository {
         BLOBS_DIR.mkdir();
         BRANCHES_DIR.mkdirs();
         STAGE_DIR.mkdir();
+        REMOTE_DIR.mkdir();
+        CONFIG.mkdir();
         // 创建初始提交
         Commit initCommit = new Commit();
         /** 需要在initCommit.getId()这个文件下写入initCommit对象 */
@@ -62,33 +68,42 @@ public class Repository {
         }
     }
 
-    public static void logCommand() {
+    public static void logCommand() throws IOException {
         checkIfInit();
-        String headCommitId = getHeadCommitId();
-        Commit curCommit = getCommitById(headCommitId);
+        String headCommitId = getHeadCommitId(null);
+        Commit curCommit = getCommitById(null, headCommitId);
         while (curCommit != null) {
             printCommit(curCommit);
-            curCommit = getCommitById(curCommit.getParent1Id());
+            curCommit = getParent1Commit(null, curCommit);
         }
     }
 
     /** 读取HEAD指向的commit的ID，如果指向的是一个分支，那么返回分支指向的commit的ID */
-    private static String getHeadCommitId() {
-        String branchNameOrID = readContentsAsString(HEAD_FILE);
-        if (branchNameOrID.startsWith(BRANCHES_DIR.getPath())) {
+    private static String getHeadCommitId(String gitDir) {
+        File headFile = null;
+        File branchesDir = null;
+        if (gitDir == null) {
+            headFile = HEAD_FILE;
+            branchesDir = BRANCHES_DIR;
+        } else {
+            headFile = join(gitDir, "HEAD");
+            branchesDir = join(gitDir, "refs", "heads");
+        }
+        String branchNameOrID = readContentsAsString(headFile);
+        if (branchNameOrID.startsWith("/")) {
             return readBranchCommit(branchNameOrID);
         } else {
             return branchNameOrID;
         }
     }
 
-    private static Commit getHeadCommit() {
-        return getCommitById(getHeadCommitId());
+    private static Commit getHeadCommit(String gitDir) {
+        return getCommitById(gitDir, getHeadCommitId(gitDir));
     }
 
     /** 返回分支指向的Commit的ID */
-    private static String readBranchCommit(String branchName) {
-        File branchFile = new File(branchName);
+    private static String readBranchCommit(String branchPath) {
+        File branchFile = new File(branchPath);
         String commitID = readContentsAsString(branchFile);
         return commitID;
     }
@@ -103,9 +118,9 @@ public class Repository {
                 System.out.println("File does not exist.");
                 System.exit(0);
             }
-        } else { // 这说明需要将指定分支的文件写入到staging area
-            Commit branchCommit = getBranchCommitByName(branchName);
-            fileToBeAdded = branchCommit.getFileByName(fileName);
+        } else { // 这说明需要将指定分支的某一文件写入到staging area
+            Commit branchCommit = getBranchCommitByName(REMOTE_DIR.getPath(), branchName);
+            fileToBeAdded = branchCommit.getFileByName(null, fileName);
         }
         // 如果添加了a.txt，而暂存区又rm_a.txt，那么需要删除rm_a.txt
         File removedFile = join(STAGE_DIR, "rm_" + fileName);
@@ -114,7 +129,7 @@ public class Repository {
         }
         String fileToBeAddedSHA1 = getFileSHA1(fileToBeAdded); // 计算添加文件的SHA-1值。
         // 需要取出当前commit的该文件的SHA-1值
-        Commit curCommit = getHeadCommit();
+        Commit curCommit = getHeadCommit(null);
         String curCommitFileSHA1 = curCommit.getFileSHA1ByFileName(fileName);
         if (fileToBeAddedSHA1.equals(curCommitFileSHA1)) {
             File oldFile = join(STAGE_DIR, fileName);
@@ -135,7 +150,7 @@ public class Repository {
             System.exit(0);
         }
         /** 设置新commit的信息 */
-        Commit curCommit = getHeadCommit(); // curCommit
+        Commit curCommit = getHeadCommit(null); // curCommit
         String headCommitId = curCommit.getId(); // curCommit的ID
         Commit newCommit = new Commit(); // 新的Commit
         newCommit.setMessage(message);
@@ -146,7 +161,7 @@ public class Repository {
         } else {
             newCommit.setParent1Id(parent1Id);
             newCommit.setParent2Id(parent2Id);
-            Commit commit = getCommitById(parent1Id);
+            Commit commit = getCommitById(null, parent1Id);
             newCommit.setBlobs(new TreeMap<>(commit.getBlobs()));
         }
         /** 建立新commit的Map */
@@ -253,7 +268,7 @@ public class Repository {
         List<String> modificationsFileNames = new ArrayList<>();
         List<String> stagedFiles = getStagedFiles();
         Set<String> trackedFileNames = getTrackedFileNames();
-        Commit curCommit = getHeadCommit();
+        Commit curCommit = getHeadCommit(null);
         for (File file: CWD.listFiles()) {
             String fileName = file.getName();
             // 1. Tracked in the current commit, changed in the working directory, but not staged;
@@ -395,15 +410,23 @@ public class Repository {
         }
         File branch = join(BRANCHES_DIR, branchName);
         branch.createNewFile();
-        Commit commit = getHeadCommit();
+        Commit commit = getHeadCommit(null);
         writeContents(branch, commit.getId());
     }
 
-    public static void checkoutCommand(String branchName) throws IOException {
+    public static void checkoutCommand(String gitDir, String branchName) throws IOException {
         checkIfInit();
+        File branchPath = null;
+        if (branchName.contains("/")) { // 切换到远端分支，如R1/master
+            int index = branchName.lastIndexOf('/');
+            String remoteDir = branchName.substring(0, index);
+            String remoteBranch = branchName.substring(index + 1);
+            branchPath = join(REMOTE_DIR, remoteDir, remoteBranch);
+        } else {
+            branchPath = join(BRANCHES_DIR, branchName);
+        }
         // 处理一下特殊情况
         // 1. 检查分支是否存在
-        File branchPath = join(BRANCHES_DIR, branchName);
         if (!branchPath.exists()) {
             System.out.println("No such branch exists.");
             System.exit(0);
@@ -415,24 +438,24 @@ public class Repository {
             System.exit(0);
         }
         // 3. 检查当前目录，处理不符合条件的文件。
-        checkOverwriteAndDelete(branchName);
+        checkOverwriteAndDelete(branchPath.getPath());
         // 下面是正常情况
         // 1. 将指定分支的文件放在当前目录下
         String sha1 = readContentsAsString(branchPath);
         copyCommitFileToCWD(sha1);
         // 2. 将头指针指向指定分支
-        setupHEAD(branchName);
+        setupHEAD(branchPath.getPath());
         // 3. 清除staging area
         clearStagingArea();
     }
 
     private static void copyCommitFileToCWD(String sha1) throws IOException {
-        Commit branchCommit = getCommitById(sha1);
+        Commit branchCommit = getCommitById(null, sha1);
         Map<String, String> blobs = branchCommit.getBlobs();
         for (Map.Entry<String, String> entry : blobs.entrySet()) {
             String blobName = entry.getKey();
             String blobSha1 = entry.getValue();
-            File branchFile = getFileBySHA1(blobSha1); // 指定分支的文件
+            File branchFile = getFileBySHA1(null, blobSha1); // 指定分支的文件
             File file = join(CWD, blobName); // 当前目录的同名文件
             if (!file.exists()) { // 如果当前目录下的同名文件不不存在，则创建一个
                 file.createNewFile();
@@ -445,9 +468,9 @@ public class Repository {
      * 如果一个文件没有被当前commit追踪，但是会被指定的commit覆盖，那么就不行！
      * 如果一个文件被当前commit追踪，但是没有在指定的commit中追踪，就需要删除！
      * */
-    private static void checkOverwriteAndDelete(String branchNameOrId) {
+    private static void checkOverwriteAndDelete(String branchPathOrId) {
         Set<String> trackedFileNames = getTrackedFileNames();
-        Set<String> commitFileNames = getTrackedFileNameByBranchNameOrID(branchNameOrId);
+        Set<String> commitFileNames = getTrackedFileNameByBranchPathOrID(branchPathOrId);
         for (File file: CWD.listFiles()) {
             // 如果一个文件没有被当前commit追踪，但是会被指定的commit覆盖，那么就不行！
             if (!trackedFileNames.contains(file.getName()) && commitFileNames.contains(file.getName())) {
@@ -461,8 +484,14 @@ public class Repository {
         }
     }
 
-    public static File getFileBySHA1(String sha1) {
-        for (File dir: BLOBS_DIR.listFiles()) {
+    public static File getFileBySHA1(String gitDir, String sha1) {
+        File blobsDir = null;
+        if (gitDir == null) {
+            blobsDir = BLOBS_DIR;
+        } else {
+            blobsDir = join(gitDir, "blobs");
+        }
+        for (File dir: blobsDir.listFiles()) {
             String prefix = dir.getName();
             for (File file : dir.listFiles()) {
                 String suffix = file.getName();
@@ -480,33 +509,37 @@ public class Repository {
      * @param branchNameOrId 可以是一个branch的名字，也可以是一个CommitId
      * @return 返回commit包含的文件名
      */
-    private static Set<String> getTrackedFileNameByBranchNameOrID(String branchNameOrId) {
-        File branch = join(BRANCHES_DIR, branchNameOrId); // branch这个file里面写的时commit的sha1值。
+    private static Set<String> getTrackedFileNameByBranchPathOrID(String branchPathOrId) {
+        File branch = join(branchPathOrId);
         Commit commit;
-        if (branch.exists()) { // 存在说明branchNameOrId是分支的名字
+        if (branch.exists()) { // 存在说明branchNameOrId是分支的路径
             String sha1 = readContentsAsString(branch);
-            commit = getCommitById(sha1);
+            commit = getCommitById(null, sha1);
         } else {
-            commit = getCommitById(branchNameOrId);
+            commit = getCommitById(null, branchPathOrId);
         }
         Set<String> fileNames = commit.getFileNames();
         return fileNames;
     }
 
-    private static void setupHEAD(String branchName) {
-        String path = join(BRANCHES_DIR, branchName).getPath();
-        writeContents(HEAD_FILE, path);
+    private static void setupHEAD(String branchPath) {
+        writeContents(HEAD_FILE, branchPath);
     }
 
     private static String getCurCommitName() {
         String headBranchPath = readContentsAsString(HEAD_FILE);
-        String headBranchName = new File(headBranchPath).getName();
-        return headBranchName;
+        Path path = Paths.get(headBranchPath);
+        if (headBranchPath.contains("remotes")) {
+            String result = path.getName(path.getNameCount() - 2) + "/" + path.getFileName();
+            return result;
+        } else {
+            return path.getName(path.getNameCount() - 1).toString();
+        }
     }
 
     public static void rmCommand(String fileName) throws IOException {
         checkIfInit();
-        Commit commit = getHeadCommit();
+        Commit commit = getHeadCommit(null);
         Set<String> trackedFileNames = getTrackedFileNames();
         Set<String> stagedFileNames = getStagedFileNames();
         if (trackedFileNames.contains(fileName) || stagedFileNames.contains(fileName)) {
@@ -534,7 +567,7 @@ public class Repository {
     }
 
     private static Set<String> getTrackedFileNames() {
-        Commit headCommit = getHeadCommit();
+        Commit headCommit = getHeadCommit(null);
         Map<String, String> blobs = headCommit.getBlobs();
         Set<String> fileNames = blobs.keySet();
         return fileNames;
@@ -551,9 +584,9 @@ public class Repository {
 
     public static void checkoutCommandArg3(String fileName) throws IOException {
         checkIfInit();
-        Commit commit = getHeadCommit();
+        Commit commit = getHeadCommit(null);
         checkFileInCommit(commit, fileName);
-        File fileInCommit = commit.getFileByName(fileName);
+        File fileInCommit = commit.getFileByName(null, fileName);
         File fileInCWD = new File(fileName);
         if (!fileInCWD.exists()) {
             fileInCWD.createNewFile();
@@ -567,9 +600,9 @@ public class Repository {
     public static void checkoutCommandArg4(String commitId, String fileName) throws IOException {
         checkIfInit();
         String fullCommitId = checkCommitExistsByIdAndReturnFullId(commitId);
-        Commit commit = getCommitById(fullCommitId);
+        Commit commit = getCommitById(null, fullCommitId);
         checkFileInCommit(commit, fileName);
-        File fileInCommit = commit.getFileByName(fileName);
+        File fileInCommit = commit.getFileByName(null, fileName);
         File fileInCWD = new File(fileName);
         if (!fileInCWD.exists()) {
             fileInCWD.createNewFile();
@@ -618,8 +651,17 @@ public class Repository {
     }
 
     /** 根据Id寻找对应的Commit */
-    private static Commit getCommitById(String commitId) {
-        for (File dir: COMMITS_DIR.listFiles()) {
+    private static Commit getCommitById(String gitDir, String commitId) {
+        if (commitId == null) {
+            return null;
+        }
+        File commitsDir = null;
+        if (gitDir == null || gitDir == REMOTE_DIR.getPath()) {
+            commitsDir = COMMITS_DIR;
+        } else {
+            commitsDir = join(gitDir, "commits");
+        }
+        for (File dir: commitsDir.listFiles()) {
             String prefix = dir.getName();
             for (File file : dir.listFiles()) {
                 String suffix = file.getName();
@@ -687,17 +729,25 @@ public class Repository {
         }
     }
 
-    public static void mergeCommand(String branchName) throws IOException {
+    public static void mergeCommand(String gitDir, String branchName) throws IOException {
         checkIfInit();
         // Failure cases
         // 1.  If there are staged additions or removals present, print the error message You have uncommitted changes.
         checkStagingAreaIsEmpty();
         // 2. If a branch with the given name does not exist, print the error message A branch with that name
         // does not exist.
-        checkBranchExist(branchName);
+        checkBranchExist(null, branchName);
         // 3. If attempting to merge a branch with itself, print the error message Cannot merge a branch with itself.
-        Commit curCommit = getHeadCommit();
-        Commit givenCommit = getBranchCommitByName(branchName);
+        Commit givenCommit = null;
+        Commit curCommit = getHeadCommit(null);
+        if (branchName.contains("/")) {
+            int index = branchName.lastIndexOf('/');
+            String remoteDir = branchName.substring(0, index);
+            String remoteBranch = branchName.substring(index + 1);
+            givenCommit = getBranchCommitByName(REMOTE_DIR.getPath(), branchName);
+        } else {
+            givenCommit = getBranchCommitByName(null, branchName);
+        }
         if (curCommit.getId().equals(givenCommit.getId())) {
             System.out.println("Cannot merge a branch with itself.");
             System.exit(0);
@@ -721,7 +771,7 @@ public class Repository {
         // 2. If the split point is the current branch, then the effect is to check out the given branch,
         // and the operation ends after printing the message Current branch fast-forwarded.
         if (latestCommonAncestor.getId().equals(curCommit.getId())) {
-            checkoutCommand(branchName);
+            checkoutCommand(null, branchName);
             System.out.println("Current branch fast-forwarded.");
             System.exit(0);
         }
@@ -729,11 +779,11 @@ public class Repository {
         Set<String> unionFileNames = getUnionFileNames(curCommit, givenCommit, latestCommonAncestor);
         boolean hasConflict = false, conflictFlag = false;
         for (String fileName : unionFileNames) {
-            File curFile = curCommit.getFileByName(fileName);
+            File curFile = curCommit.getFileByName(null, fileName);
             String curFileSha1 = getFileSHA1(curFile);
-            File givenFile = givenCommit.getFileByName(fileName);
+            File givenFile = givenCommit.getFileByName(null, fileName);
             String givenFileSha1 = getFileSHA1(givenFile);
-            File latestCommonAncestorFile = latestCommonAncestor.getFileByName(fileName);
+            File latestCommonAncestorFile = latestCommonAncestor.getFileByName(null, fileName);
             String latestCommonAncestorFileSha1 = getFileSHA1(latestCommonAncestorFile);
             // 1. modified in givenCommit but not curCommit -> givenCommit
             rule1(fileName, curFileSha1, givenFileSha1, latestCommonAncestorFileSha1, branchName,
@@ -889,7 +939,6 @@ public class Repository {
                 + curContent + "=======" + lineSeparator
                 + givenContent + ">>>>>>>" + lineSeparator;
         writeContents(file, mergeContent);
-//        System.out.println("mergeContent:\n" + mergeContent);
         // 再修改暂存区
         addCommand(file.getName(), null);
     }
@@ -910,18 +959,39 @@ public class Repository {
         }
     }
 
-    private static void checkBranchExist(String branchName) {
-        File file = join(BRANCHES_DIR, branchName);
+    private static void checkBranchExist(String gitDir, String branchName) {
+        File branchDir = null;
+        if (gitDir == null) {
+            if (branchName.contains("/")) {
+                branchDir = REMOTE_DIR;
+            } else {
+                branchDir = BRANCHES_DIR;
+            }
+        } else {
+            branchDir = join(gitDir, "refs", "heads");
+        }
+        File file = join(branchDir, branchName);
         if (!file.exists()) {
-            System.out.println("A branch with that name does not exist.");
+            if (gitDir == null) {
+                System.out.println("A branch with that name does not exist.");
+            } else {
+                System.out.println("That remote does not have that branch.");
+            }
             System.exit(0);
         }
     }
 
-    private static Commit getBranchCommitByName(String name) {
-        File file = join(BRANCHES_DIR, name);
+    private static Commit getBranchCommitByName(String gitDir, String name) {
+        File file = null;
+        if (gitDir == null) { // 如果是null，说明是在当前文件夹下的.gitlet目录寻找
+            file = join(BRANCHES_DIR, name);
+        } else if (gitDir == REMOTE_DIR.getPath()) {
+            file = join(REMOTE_DIR, name);
+        } else {
+            file = join(gitDir, "refs", "heads", name);
+        }
         String commitSha1 = readContentsAsString(file);
-        Commit commit = getCommitById(commitSha1);
+        Commit commit = getCommitById(gitDir, commitSha1);
         return commit;
     }
 
@@ -953,21 +1023,201 @@ public class Repository {
 
     private static void addParentsCommitAndIdToQueue(Commit commit, List<String> ancestors, Queue<Commit> ancestorsQueue) {
         if (commit.getParent1Id() != null) {
-            ancestorsQueue.add(getCommitById(commit.getParent1Id()));
+            ancestorsQueue.add(getCommitById(null, commit.getParent1Id()));
             ancestors.add(commit.getParent1Id());
         }
         if (commit.getParent2Id() != null) {
-            ancestorsQueue.add(getCommitById(commit.getParent2Id()));
+            ancestorsQueue.add(getCommitById(null, commit.getParent2Id()));
             ancestors.add(commit.getParent2Id());
         }
     }
 
     private static void addParentsIdToQueue(Commit commit, Queue<Commit> ancestorsQueue) {
         if (commit.getParent1Id() != null) {
-            ancestorsQueue.add(getCommitById(commit.getParent1Id()));
+            ancestorsQueue.add(getCommitById(null, commit.getParent1Id()));
         }
         if (commit.getParent2Id() != null) {
-            ancestorsQueue.add(getCommitById(commit.getParent2Id()));
+            ancestorsQueue.add(getCommitById(null, commit.getParent2Id()));
         }
+    }
+
+    public static void addRemoteCommand(String remoteName, String remoteDir) throws IOException {
+        checkIfInit();
+        File file = join(REMOTE_DIR, remoteName);
+        // If a remote with the given name already exists, print the error message:
+        // A remote with that name already exists.
+        if (file.exists()) {
+            System.out.println("A remote with that name already exists.");
+            System.exit(0);
+        }
+        file.mkdir();
+        // 添加remoteName到目录的映射关系
+        File configFile = join(CONFIG, remoteName);
+        configFile.createNewFile();
+        writeContents(configFile, remoteDir);
+    }
+
+    public static void rmRemoteCommand(String remoteName) {
+        checkIfInit();
+        File file = join(REMOTE_DIR, remoteName);
+        if (!file.exists()) {
+            System.out.println("A remote with that name does not exist.");
+            System.exit(0);
+        }
+        file.delete();
+        File configFile = join(CONFIG, remoteName);
+        configFile.delete();
+    }
+
+    public static void pushCommand(String remoteName, String branchName) throws IOException {
+        checkIfInit();
+        checkRemoteDirExists(remoteName);
+        checkRemoteHeadProper(remoteName, branchName);
+        // 如果指定的分支在远端不存在，那么将对应的分支的所有commit推送上去
+        if (!checkRemoteBranchExist(remoteName, branchName)) {
+            pushAllCommits(remoteName, branchName);
+            return;
+        }
+        // 如果指定的分支存在，那么本地分支中多余的commit推送到远端分支上
+        appendCommitsToRemote(remoteName, branchName);
+    }
+
+    // 把本地的指定的branch全部推送到远端的对应的branch
+    private static void pushAllCommits(String remoteName, String branchName) throws IOException {
+        String remoteDirName = getRemoteDirName(remoteName);
+        Commit localCommit = getBranchCommitByName(null, branchName);
+        File branchFile = join(remoteDirName, "refs", "heads", branchName);
+        writeContents(branchFile, localCommit.getId());
+        while (localCommit != null) {
+            pushCommit(localCommit, remoteDirName);
+            pushBlobs(localCommit, remoteDirName);
+            localCommit = getParent1Commit(null, localCommit);
+        }
+    }
+
+    private static boolean checkRemoteBranchExist(String remoteName, String branchName) throws IOException {
+        String remoteDirName = getRemoteDirName(remoteName);
+        File file = join(remoteDirName, "refs", "heads", branchName);
+        if (!file.exists()) {
+            file.createNewFile();
+            return false;
+        }
+        return true;
+    }
+
+    // 将本地分支上多的commit推送到远端仓库，并且将commit对应的blob也推送上去
+    private static void appendCommitsToRemote(String remoteName, String branchName) throws IOException {
+        Commit curCommit = getBranchCommitByName(null, branchName);
+        String remoteDirName = getRemoteDirName(remoteName);
+        Commit remoteCurCommit = getBranchCommitByName(remoteDirName, branchName);
+        File branchFile = join(remoteDirName, "refs", "heads", branchName);
+        writeContents(branchFile, curCommit.getId());
+        while (!remoteCurCommit.equals(curCommit)) {
+            pushCommit(curCommit, remoteDirName);
+            pushBlobs(curCommit, remoteDirName);
+            curCommit = getParent1Commit(null, curCommit);
+        }
+    }
+
+    private static Commit getParent1Commit(String gitDir, Commit commit) {
+        String parent1Id = commit.getParent1Id();
+        Commit parentCommit = getCommitById(gitDir, parent1Id);
+        return parentCommit;
+    }
+
+    // 把commit这个对象推送到远端仓库上
+    private static void pushCommit(Commit commit, String remoteDirName) throws IOException {
+        File commitsDir = join(remoteDirName, "commits");
+        writeObjectWithPrefix(commitsDir, commit.getId(), commit);
+    }
+
+    // 把commit对应的文件推送到远端仓库上
+    private static void pushBlobs(Commit commit, String remoteDirName) throws IOException {
+        Set<String> fileNames = commit.getFileNames();
+        File blobsDir = join(remoteDirName, "blobs");
+        for (String fileName : fileNames) {
+            File file = commit.getFileByName(null, fileName);
+            String sha1 = getFileSHA1(file);
+            writeObjectWithPrefix(blobsDir, sha1, readContents(file));
+        }
+    }
+
+    // 根据远端仓库的名字获取远端仓库的路径
+    private static String getRemoteDirName(String remoteName) {
+        File file = join(CONFIG, remoteName);
+        String remoteDirName = readContentsAsString(file);
+        return remoteDirName;
+    }
+
+    //  Check if the remote .gitlet directory exist, otherwise print Remote directory not found.
+    private static void checkRemoteDirExists(String remoteName) {
+        File file = join(CONFIG, remoteName);
+        String remoteDirName = readContentsAsString(file);
+        File dir = new File(remoteDirName);
+        if (!dir.exists()) {
+            System.out.println("Remote directory not found.");
+            System.exit(0);
+        }
+    }
+
+    // 检查远端仓库的分支的最新提交是否包含在本地的提交中。
+    private static void checkRemoteHeadProper(String remoteName, String branchName) {
+        String remoteDirName = getRemoteDirName(remoteName);
+        Commit remoteCommit = getBranchCommitByName(remoteDirName, branchName);
+        Commit localHeadCommit = getHeadCommit(null);
+        List<String> allAncestors = getAllAncestors(localHeadCommit);
+        //  If the remote branch’s head is not in the history of the current local head,
+        //  print the error message Please pull down remote changes before pushing.
+        if (!allAncestors.contains(remoteCommit.getId())) {
+            System.out.println("Please pull down remote changes before pushing.");
+            System.exit(0);
+        }
+    }
+
+    public static void fetchCommand(String remoteName, String branchName) throws IOException {
+        String remoteDirName = getRemoteDirName(remoteName);
+        checkRemoteDirExists(remoteName);
+        checkBranchExist(remoteDirName, branchName);
+        // 在.gitlet/refs/heads/remotes 先创建remoteName文件夹，在创建branchName这个文件
+        File remoteDir = join(remoteDirName, "refs", "remotes", remoteName);
+        if (!remoteDir.exists()) {
+            remoteDir.mkdir();
+        }
+        File remoteFile = join(remoteDir, branchName);
+        if (!remoteFile.exists()) {
+            remoteFile.createNewFile();
+        }
+        fetchAllCommits(remoteName, branchName);
+    }
+
+    private static void fetchAllCommits(String remoteName, String branchName) throws IOException {
+        String remoteDirName = getRemoteDirName(remoteName);
+        Commit remoteCommit = getBranchCommitByName(remoteDirName, branchName);
+        File file = join(GITLET_DIR, "refs", "remotes", remoteName, branchName); // 找到本地的远端分支文件
+        writeContents(file, remoteCommit.getId());
+        while (remoteCommit != null) {
+            fetchCommit(remoteCommit, remoteDirName);
+            fetchBlobs(remoteCommit, remoteDirName);
+            remoteCommit = getParent1Commit(remoteDirName, remoteCommit);
+        }
+    }
+
+    private static void fetchCommit(Commit commit, String remoteDirName) throws IOException {
+        writeObjectWithPrefix(COMMITS_DIR, commit.getId(), commit);
+    }
+
+    private static void fetchBlobs(Commit commit, String remoteDirName) throws IOException {
+        Set<String> fileNames = commit.getFileNames();
+        for (String fileName : fileNames) {
+            File file = commit.getFileByName(remoteDirName, fileName);
+            String sha1 = getFileSHA1(file);
+            writeObjectWithPrefix(BLOBS_DIR, sha1, readContents(file));
+        }
+    }
+
+    public static void pullCommand(String remoteName, String branchName) throws IOException {
+        fetchCommand(remoteName, branchName);
+        String gitDir = getRemoteDirName(remoteName);
+        mergeCommand(gitDir, remoteName + "/" + branchName);
     }
 }

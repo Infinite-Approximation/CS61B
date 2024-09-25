@@ -58,9 +58,9 @@ public class Commit implements Serializable {
         return blobs.keySet();
     }
 
-    public File getFileByName(String fileName) {
+    public File getFileByName(String gitDir, String fileName) {
         String sha1 = getFileSHA1ByFileName(fileName);
-        File file = Repository.getFileBySHA1(sha1);
+        File file = Repository.getFileBySHA1(gitDir, sha1);
         return file;
     }
 
@@ -144,5 +144,20 @@ public class Commit implements Serializable {
 
     public void setBlobs(Map<String, String> blobs) {
         this.blobs = blobs;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        Commit commit = (Commit) object;
+        return Objects.equals(message, commit.message) && Objects.equals(timestamp, commit.timestamp)
+                && Objects.equals(parent1Id, commit.parent1Id) && Objects.equals(parent2Id, commit.parent2Id)
+                && Objects.equals(Id, commit.Id) && Objects.equals(blobs, commit.blobs);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(message, timestamp, parent1Id, parent2Id, Id, blobs);
     }
 }

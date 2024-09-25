@@ -46,6 +46,8 @@ public class Main {
         String fileName;
         String branchName;
         String commitId;
+        String remoteName;
+        String remoteDir;
         try {
             switch(firstArg) {
                 case "init":
@@ -97,7 +99,7 @@ public class Main {
                     int length = args.length;
                     if (length == 2) {
                         branchName = args[1];
-                        Repository.checkoutCommand(branchName);
+                        Repository.checkoutCommand(null, branchName);
                     } else if (length == 3) {
                         fileName = args[2];
                         Repository.checkoutCommandArg3(fileName);
@@ -120,7 +122,36 @@ public class Main {
                 case "merge":
                     checkOpearands(args, 1);
                     branchName = args[1];
-                    Repository.mergeCommand(branchName);
+                    Repository.mergeCommand(null, branchName);
+                    break;
+                case "add-remote":
+                    checkOpearands(args, 2);
+                    remoteName = args[1];
+                    remoteDir = args[2];
+                    Repository.addRemoteCommand(remoteName, remoteDir);
+                    break;
+                case "rm-remote":
+                    checkOpearands(args, 1);
+                    remoteName = args[1];
+                    Repository.rmRemoteCommand(remoteName);
+                    break;
+                case "push":
+                    checkOpearands(args, 2);
+                    remoteName = args[1];
+                    branchName = args[2];
+                    Repository.pushCommand(remoteName, branchName);
+                    break;
+                case "fetch":
+                    checkOpearands(args, 2);
+                    remoteName = args[1];
+                    branchName = args[2];
+                    Repository.fetchCommand(remoteName, branchName);
+                    break;
+                case "pull":
+                    checkOpearands(args, 2);
+                    remoteName = args[1];
+                    branchName = args[2];
+                    Repository.pullCommand(remoteName, branchName);
                     break;
                 default:
                     System.out.println("No command with that name exists.");
