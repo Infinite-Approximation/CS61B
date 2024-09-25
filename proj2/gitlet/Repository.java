@@ -35,8 +35,8 @@ public class Repository {
     public static void initCommand() throws IOException {
         // 如果存在.gitlet那么就退出
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists in the " +
-                    "current directory.");
+            System.out.println("A Gitlet version-control system already exists in the "
+                    + "current directory.");
             System.exit(0);
         }
         // 初始化
@@ -482,8 +482,8 @@ public class Repository {
             // 如果一个文件没有被当前commit追踪，但是会被指定的commit覆盖，那么就不行！
             if (!trackedFileNames.contains(file.getName())
                     && commitFileNames.contains(file.getName())) {
-                System.out.println("There is an untracked file in the way; delete it, " +
-                        "or add and commit it first.");
+                System.out.println("There is an untracked file in the way; delete it, "
+                        + "or add and commit it first.");
                 System.exit(0);
             }
             // 如果一个文件被当前commit追踪，但是没有在指定的commit中追踪，就需要删除！
@@ -723,12 +723,12 @@ public class Repository {
                                       Commit latestCommonAncestor) {
         boolean flag1 = latestCommonAncestor.hasFile(untrackedFileName);
         boolean flag2 = givenCommit.hasFile(untrackedFileName);
-        boolean flag3 = flag1 && flag2 && latestCommonAncestor
-                .getFileSHA1ByFileName(untrackedFileName)
+        boolean flag3 = flag1 && flag2
+                && latestCommonAncestor.getFileSHA1ByFileName(untrackedFileName)
                 .equals(givenCommit.getFileSHA1ByFileName(untrackedFileName));
         if (flag3) {
-            System.out.println("There is an untracked file in the way; delete it, " +
-                    "or add and commit it first.");
+            System.out.println("There is an untracked file in the way; delete it, "
+                    + "or add and commit it first.");
             System.exit(0);
         }
     }
@@ -738,10 +738,10 @@ public class Repository {
      */
     private static void preCheckRule5(String untrackedFileName, Commit givenCommit,
                                       Commit latestCommonAncestor) {
-        if (givenCommit.hasFile(untrackedFileName) && !latestCommonAncestor
-                .hasFile(untrackedFileName)) {
-            System.out.println("There is an untracked file in the way; delete it, " +
-                    "or add and commit it first.");
+        if (givenCommit.hasFile(untrackedFileName) && !latestCommonAncestor.
+                hasFile(untrackedFileName)) {
+            System.out.println("There is an untracked file in the way; delete it, "
+                    + "or add and commit it first.");
             System.exit(0);
         }
     }
@@ -757,11 +757,12 @@ public class Repository {
      * 4. If an untracked file in the current commit would be overwritten or deleted by the merge,
      *    print There is an untracked file in the way; delete it, or add and commit it first.
      * 两个特殊情况
-     *    1. If the split point is the same commit as the given branch, then we do nothing;
-     *       the merge is complete, and the operation ends with the message Given branch is
-     *       an ancestor of the current branch.
-     *    2. If the split point is the current branch, then the effect is to check out the given branch,
-     *       and the operation ends after printing the message Current branch fast-forwarded.
+     *  1. If the split point is the same commit as the given branch, then we do nothing;
+     *     the merge is complete, and the operation ends with the message Given branch is
+     *     an ancestor of the current branch.
+     *  2. If the split point is the current branch, then the effect is to check out
+     *     the given branch, and the operation ends after printing the message
+     *     Current branch fast-forwarded.
      * @param gitDir
      * @param branchName
      * @throws IOException
@@ -803,7 +804,8 @@ public class Repository {
             System.exit(0);
         }
         // 然后写八条规则
-        Set<String> unionFileNames = getUnionFileNames(curCommit, givenCommit, latestCommonAncestor);
+        Set<String> unionFileNames = getUnionFileNames(curCommit, givenCommit,
+                latestCommonAncestor);
         boolean hasConflict = false, conflictFlag = false;
         for (String fileName : unionFileNames) {
             File curFile = curCommit.getFileByName(null, fileName);
