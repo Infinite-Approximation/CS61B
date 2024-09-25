@@ -512,7 +512,7 @@ public class Repository {
     private static Set<String> getTrackedFileNameByBranchPathOrID(String branchPathOrId) {
         File branch = join(branchPathOrId);
         Commit commit;
-        if (branch.exists()) { // 存在说明branchNameOrId是分支的路径
+        if (branchPathOrId.contains("/")) { // 存在说明branchNameOrId是分支的路径
             String sha1 = readContentsAsString(branch);
             commit = getCommitById(null, sha1);
         } else {
